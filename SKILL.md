@@ -1,53 +1,62 @@
 ---
 name: a-stock-data
-description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯)、研报(东财+iwencai)、信号(同花顺热点+北向+百度PAE+龙虎榜+解禁+行业)、新闻(akshare)、基础数据(mootdx财务/F10)、公告(巨潮)六层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、产业链调研、批量筛选等场景。
+description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+百度PAE+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
 origin: custom
-version: 2.1
+version: 3.0
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V2.1
+# A股全栈数据工具包 V3.0
 
-六层数据架构，21 个端点，全部实测可用（2026-05-12 验证，覆盖主板/中小板/科创板/ST）。
+七层数据架构，28 个端点，全部实测可用（2026-05-17 验证，覆盖主板/中小板/科创板/ST）。
 
-> **V2.1 新增**：龙虎榜席位 + 全市场龙虎榜 + 限售解禁日历 + 行业横向对比 + 百度股市通（概念板块 / 资金流向）+ 北向自缓存 + F10 截断优化
+> **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。新增资金面/筹码层（融资融券+大宗交易+股东户数+分红+个股资金流120日）+ 百度K线(带MA) + 指数/ETF行情 + 行业板块改用东财（同花顺加了反爬401）。
 
 **使用方式：** 将本文件放入 `~/.claude/skills/a-stock-data/SKILL.md`，Claude Code 会自动识别并在 A 股相关对话中激活。
 
 ```
 行情层（实时，不封IP）
 ├── mootdx        → K线 + 五档盘口 + 逐笔成交 (TCP 7709)
-└── 腾讯财经 API   → PE/PB/市值/换手率/涨跌停 (HTTP)
+├── 腾讯财经 API   → PE/PB/市值/换手率/涨跌停/指数/ETF (HTTP)
+└── 百度股市通     → K线带MA5/10/20 (V3.0 新增，HTTP)
 
 研报层
 ├── 东财 reportapi → 研报列表 + PDF下载 + 评级 + 三年EPS
-├── 同花顺 THS     → 一致预期EPS (akshare封装)
+├── 同花顺 THS     → 一致预期EPS (直连 basic.10jqka.com.cn)
 └── iwencai        → NL语义搜索研报 (唯一能力，需X-Claw)
 
-信号层（V2 新增 + V2.1 大幅扩展）
+信号层
 ├── 同花顺热点     → 当日强势股 + 题材归因 reason tags (零鉴权 73ms)
-├── 同花顺北向     → hgt/sgt 分钟资金流向 + 本地自缓存历史 (V2.1 改)
-├── 百度股市通     → 概念板块归属 + 个股资金流向 (V2.1 新增)
-├── 龙虎榜席位     → 上榜记录 + 买卖席位 TOP5 + 机构动向 (V2.1 新增)
-├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (V2.1 新增)
-├── 限售解禁日历   → 历史解禁 + 未来90天待解禁 (V2.1 新增)
-└── 行业横向对比   → 同花顺90行业涨跌排名 (V2.1 新增)
+├── 同花顺北向     → hgt/sgt 分钟资金流向 + 本地自缓存历史
+├── 百度股市通     → 概念板块归属 + 个股资金流向 (分钟级)
+├── 龙虎榜席位     → 上榜记录 + 买卖席位 TOP5 + 机构动向 (datacenter-web)
+├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (datacenter-web)
+├── 限售解禁日历   → 历史解禁 + 未来90天待解禁 (datacenter-web)
+└── 行业板块排名   → 东财行业涨跌/上涨下跌家数 (V3.0 替换同花顺)
+
+资金面 / 筹码层（V3.0 新增）
+├── 融资融券明细   → 日级融资余额/买入/偿还 + 融券 (datacenter-web)
+├── 大宗交易       → 成交价/量 + 买卖方营业部 (datacenter-web)
+├── 股东户数变化   → 季度股东户数 + 环比变化 (datacenter-web)
+├── 分红送转       → 历史每股派息/送股/转增 (datacenter-web)
+└── 个股资金流120日 → 主力/大单/中单/小单 日级净流入 (push2his)
 
 新闻层
-├── akshare stock_news_em      → 个股新闻 (东财)
-├── akshare stock_info_global_cls   → 财联社快讯
-└── akshare stock_info_global_em    → 东财全球资讯
+├── 东财个股新闻   → 个股相关新闻 (search-api-web JSONP)
+├── 财联社快讯     → 全市场实时电报 (cls.cn)
+└── 东财全球资讯   → 7×24 财经快讯 (np-weblist)
 
 基础数据层
 ├── mootdx finance → 季报快照 (37字段, EPS/ROE/净利)
-├── mootdx F10     → 公司资料 (9大类文本, V2.1 截断优化)
-└── akshare        → 个股基本面 (stock_individual_info_em)
+├── mootdx F10     → 公司资料 (9大类文本)
+├── 东财个股信息   → 行业/总股本/流通股/市值/上市日期 (push2)
+└── 新浪财报三表   → 资产负债表/利润表/现金流量表 (quotes.sina.cn)
 
 公告层
-├── 巨潮 cninfo    → 公告全文 (akshare封装)
+├── 巨潮 cninfo    → 公告全文检索+下载 (cninfo.com.cn)
 └── mootdx F10     → 最新公告摘要
 ```
 
@@ -64,26 +73,32 @@ version: 2.1
 - 用户要看**全市场龙虎榜**（当日所有上榜股票 + 净买额排名）
 - 用户要看**限售解禁日历**（历史解禁 + 未来待解禁）
 - 用户要做**行业横向对比**（涨跌排名 / 资金流入 / 领涨股）
+- 用户要看**融资融券 / 两融数据**（融资余额 + 融券余额）
+- 用户要看**大宗交易**（成交价/量 + 买卖方营业部）
+- 用户要看**股东户数变化**（筹码集中度）
+- 用户要看**分红送转历史**（每股派息 + 送股 + 转增）
+- 用户要看**指数/ETF行情**（上证指数 / 沪深300 / 创业板指 / ETF）
 - 用户要看新闻资讯（个股新闻 / 财联社快讯 / 全球资讯）
 - 用户要查公告（巨潮公告全文）
 - 用户要做产业链调研 / 批量横向对比
-- 关键词：估值、一致预期、机构预测、市盈率、PEG、市值、研报、产业链、行业研究、K线、盘口、公告、新闻、**强势股、题材、热点、概念归因、北向资金、沪股通、深股通、概念板块、资金流向、主力、龙虎榜、席位、营业部、全市场龙虎榜、净买入、解禁、限售、行业对比、行业轮动**
+- 关键词：估值、一致预期、机构预测、市盈率、PEG、市值、研报、产业链、行业研究、K线、盘口、公告、新闻、**强势股、题材、热点、概念归因、北向资金、沪股通、深股通、概念板块、资金流向、主力、龙虎榜、席位、营业部、全市场龙虎榜、净买入、解禁、限售、行业对比、行业轮动、融资融券、两融、大宗交易、股东户数、筹码集中、分红、派息、送股、指数、ETF**
 
 ---
 
 ## Prerequisites
 
 ```bash
-pip install mootdx akshare requests pandas stockstats
+pip install mootdx requests pandas stockstats
 ```
 
 | 依赖 | 版本要求 | 用途 |
 |------|---------|------|
-| mootdx | >= 0.10 | TCP行情+财务+F10 |
-| akshare | >= 1.10 | 研报/新闻/公告/一致预期/龙虎榜/解禁/行业 |
-| requests | any | 腾讯API+东财PDF+百度PAE+同花顺 |
-| pandas | any | 数据处理 |
+| mootdx | >= 0.10 | TCP行情+财务+F10（唯一非HTTP依赖） |
+| requests | any | 所有HTTP API直连 |
+| pandas | any | 数据处理+HTML表格解析 |
 | stockstats | any | 技术指标计算（RSI/MACD/BOLL等） |
+
+> **V3.0 架构：** 除 mootdx（TCP 二进制协议）外，所有数据源均为直连 HTTP API，零第三方数据封装依赖。每个端点的底层 URL/参数完全暴露，方便调试和定制。
 
 ### iwencai API Key（仅语义搜索需要）
 
@@ -96,7 +111,7 @@ export IWENCAI_BASE_URL="https://openapi.iwencai.com"
 # 注册后安装 SkillHub CLI，再安装 report-search 技能即可获得 Key
 ```
 
-其他数据源（mootdx / 腾讯 / akshare / 巨潮 / 同花顺 / 百度股市通）全部免费，无需 key。
+其他数据源（mootdx / 腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮）全部免费，无需 key。
 
 ### 市场前缀规则（全局通用）
 
@@ -122,6 +137,33 @@ def get_prefix(code: str) -> str:
 | `688017.SH` / `688017.sh` | `688017` |
 | `SZ000001` | `000001` |
 | `BJ832000` | `832000` |
+
+### 东财数据中心统一查询（共用 helper）
+
+龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用同一 base URL：
+
+```python
+import requests
+
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+
+def eastmoney_datacenter(report_name: str, columns: str = "ALL",
+                          filter_str: str = "", page_size: int = 50,
+                          sort_columns: str = "", sort_types: str = "-1") -> list[dict]:
+    """东财数据中心统一查询 — 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红 共用"""
+    params = {
+        "reportName": report_name, "columns": columns,
+        "filter": filter_str, "pageNumber": "1", "pageSize": str(page_size),
+        "sortColumns": sort_columns, "sortTypes": sort_types,
+        "source": "WEB", "client": "WEB",
+    }
+    r = requests.get(DATACENTER_URL, params=params, headers={"User-Agent": UA}, timeout=15)
+    d = r.json()
+    if d.get("result") and d["result"].get("data"):
+        return d["result"]["data"]
+    return []
+```
 
 ---
 
@@ -156,7 +198,7 @@ trades = client.transaction(symbol='688017', date='20260502')
 
 **mootdx 不提供 PE / PB / 市值 / 换手率 / 涨跌停价** — 这些走腾讯财经。
 
-### 1.2 腾讯财经 API — PE/PB/市值/换手率/涨跌停
+### 1.2 腾讯财经 API — PE/PB/市值/换手率/涨跌停/指数/ETF
 
 HTTP GET，GBK 编码，`~` 分隔 88 个字段，不封IP。
 
@@ -167,6 +209,8 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
     """
     批量拉取腾讯财经实时行情。
     codes: ["688017", "300476", "002463"]
+    也支持指数: ["000001", "000300", "399006"]
+    也支持ETF: ["510050", "510300"]
     返回: {code: {name, price, pe_ttm, pb, mcap, ...}}
     """
     prefixed = []
@@ -216,10 +260,16 @@ def tencent_quote(codes: list[str]) -> dict[str, dict]:
         }
     return result
 
-# 用法
+# 用法: 个股
 quotes = tencent_quote(["688017", "300476", "002463"])
 for code, q in quotes.items():
     print(f"{q['name']}({code}): {q['price']}元 PE={q['pe_ttm']} PB={q['pb']} 市值={q['mcap_yi']}亿")
+
+# 用法: 指数 — sh000001=上证指数, sh000300=沪深300, sz399006=创业板指
+index_quotes = tencent_quote(["000001", "000300", "399006"])
+
+# 用法: ETF — sh510050=上证50ETF, sh510300=沪深300ETF
+etf_quotes = tencent_quote(["510050", "510300"])
 ```
 
 #### 腾讯财经字段索引速查（实测校准 2026-05-03）
@@ -249,6 +299,43 @@ for code, q in quotes.items():
 | **52** | **PE(静)** | 314.76 |
 
 > **踩坑提醒：** 网上很多教程把索引 43 写成 PB，实测是振幅%。PB 在索引 46。
+
+### 1.3 百度股市通 K线 — 带MA5/MA10/MA20（V3.0 新增）
+
+**核心价值：** 返回时自带均线数据，无需本地计算。
+
+```python
+import requests
+
+def baidu_kline_with_ma(code: str, start_time: str = "") -> dict:
+    """百度股市通K线 — 独有能力: 返回时自带 ma5/ma10/ma20 均价"""
+    url = "https://finance.pae.baidu.com/selfselect/getstockquotation"
+    params = {
+        "all": "1", "isIndex": "false", "isBk": "false", "isBlock": "false",
+        "isFutures": "false", "isStock": "true", "newFormat": "1",
+        "group": "quotation_kline_ab", "finClientType": "pc",
+        "code": code, "start_time": start_time, "ktype": "1",
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/vnd.finance-web.v1+json",
+        "Origin": "https://gushitong.baidu.com",
+        "Referer": "https://gushitong.baidu.com/",
+    }
+    r = requests.get(url, params=params, headers=headers, timeout=10)
+    d = r.json()
+    result = d.get("Result", {})
+    md = result.get("newMarketData", {})
+    keys = md.get("keys", [])  # includes: ma5avgprice, ma10avgprice, ma20avgprice
+    rows = md.get("marketData", "").split(";")
+    return {"keys": keys, "rows": rows}
+
+# 用法
+data = baidu_kline_with_ma("600519")
+print("字段:", data["keys"][:10])
+print("最近5根K线:", data["rows"][-5:])
+# keys 包含: time, open, close, high, low, volume, amount, ma5avgprice, ma10avgprice, ma20avgprice 等
+```
 
 ---
 
@@ -334,24 +421,39 @@ for r in reports[:5]:
 | emRatingName | 评级(买入/增持/...) |
 | indvInduName | 行业分类 |
 
-### 2.2 akshare — 机构一致预期EPS
+### 2.2 同花顺一致预期EPS（直连 basic.10jqka.com.cn）
 
 ```python
-import akshare as ak
+import requests
+import pandas as pd
 
-df = ak.stock_profit_forecast_ths(
-    symbol="688017",
-    indicator="预测年报每股收益"
-)
-# 返回列: 年度, 预测机构数, 最小值, 均值, 最大值, 行业平均数
-# "均值" = 机构一致预期EPS
+def ths_eps_forecast(code: str) -> pd.DataFrame:
+    """
+    同花顺机构一致预期EPS。
+    直连 basic.10jqka.com.cn，解析HTML表格。
+    返回 DataFrame: 年度, 预测机构数, 最小值, 均值, 最大值
+    "均值" = 机构一致预期EPS
+    """
+    url = f"https://basic.10jqka.com.cn/new/{code}/worth.html"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Referer": "https://basic.10jqka.com.cn/",
+    }
+    r = requests.get(url, headers=headers, timeout=15)
+    r.encoding = "gbk"
+    dfs = pd.read_html(r.text)
+    # 找含"每股收益"的表格
+    for df in dfs:
+        cols = [str(c) for c in df.columns]
+        if any("每股收益" in c or "均值" in c for c in cols):
+            return df
+    # fallback: 返回第一个表
+    return dfs[0] if dfs else pd.DataFrame()
+
+# 用法
+df = ths_eps_forecast("688017")
+print(df)
 # "预测机构数" < 3 的要谨慎
-
-# indicator 选项:
-# "预测年报每股收益" → EPS共识（最稳定）
-# "预测年报净利润"   → 净利润预测
-# "预测详细指标"     → 综合维度（有时返回空）
-# "业绩预测详表-机构" → 按机构展示
 ```
 
 ### 2.3 iwencai — NL语义搜索研报（唯一能力）
@@ -458,134 +560,11 @@ for a in articles[:5]:
 
 ---
 
-## Layer 3: 新闻层
+## Layer 3: 信号层
 
-### 3.1 个股新闻（akshare → 东财）
+### 3.1 同花顺热点 — 当日强势股 + 题材归因 reason tags（独家）
 
-```python
-import akshare as ak
-
-df = ak.stock_news_em(symbol="688017")
-# 返回: 新闻标题, 新闻内容, 发布时间, 文章来源, 新闻链接
-# 注意: symbol 传 6 位代码，默认返回最近新闻
-```
-
-### 3.2 财联社快讯（akshare）
-
-```python
-import akshare as ak
-
-df = ak.stock_info_global_cls()
-# 返回: 标题, 内容, 发布时间
-# 财联社电报，更新频率极高（分钟级）
-```
-
-### 3.3 东财全球资讯（akshare）
-
-```python
-import akshare as ak
-
-df = ak.stock_info_global_em()
-# 返回: 标题, 摘要, 发布时间, 链接
-# 东方财富全球财经资讯
-```
-
----
-
-## Layer 4: 基础数据层
-
-### 4.1 mootdx 财务快照（37字段季报数据）
-
-```python
-from mootdx.quotes import Quotes
-
-client = Quotes.factory(market='std')
-
-# market: 0=深圳, 1=上海
-fin = client.finance(symbol='688017')
-# 返回 37 个字段的季报快照:
-#   liutongguben(流通股本), zongguben(总股本)
-#   eps(每股收益), bvps(每股净资产), roe(净资产收益率%)
-#   profit(净利润), income(主营收入)
-#   meigujingzichan(每股净资产), meigugongjijin(每股公积金)
-#   meiguweifeipeili(每股未分配利润)
-#   等37个季报财务字段
-```
-
-### 4.2 mootdx F10（公司文本资料，V2.1 截断优化）
-
-```python
-from mootdx.quotes import Quotes
-
-client = Quotes.factory(market='std')
-
-# 9 大类文本数据:
-categories = [
-    "最新提示", "公司概况", "财务分析",
-    "股东研究", "股本结构", "资本运作",
-    "业内点评", "行业分析", "公司大事",
-]
-for cat in categories:
-    text = client.F10(symbol='688017', name=cat)
-    print(f"=== {cat} ===")
-    print(text[:200] if text else "(空)")
-```
-
-> **V2.1 优化：** "股东研究" 中的【4.股东变化】章节原始 F10 全文含大量历史十大股东列表（000858 实测 16121 chars，占全文 80%），现只保留最新一期（~2000 chars），优化效果：19969→5906 chars（**-70% token**）。
-
-### 4.3 akshare 个股基本面
-
-```python
-import akshare as ak
-
-df = ak.stock_individual_info_em(symbol="688017")
-# 返回: 股票代码, 股票简称, 总股本, 流通股, 总市值(元), 流通市值(元), 行业, 上市时间
-# 注意: 市值单位是"元"不是亿元
-# 返回格式是 2 列 DataFrame (item / value)
-```
-
----
-
-## Layer 5: 公告层
-
-### 5.1 巨潮公告（akshare → cninfo）
-
-```python
-import akshare as ak
-
-df = ak.stock_zh_a_disclosure_report_cninfo(
-    symbol="688017",
-    market="沪市"   # "沪市" / "深市" / "北交所"
-)
-# 返回: 公告标题, 公告类型, 公告日期, 公告链接
-# 注意: 6开头用"沪市", 0/3开头用"深市", 8开头用"北交所"
-
-# market 判断
-def get_cninfo_market(code: str) -> str:
-    if code.startswith("6"):
-        return "沪市"
-    elif code.startswith("8"):
-        return "北交所"
-    else:
-        return "深市"
-```
-
-### 5.2 mootdx F10 公告摘要
-
-```python
-from mootdx.quotes import Quotes
-client = Quotes.factory(market='std')
-text = client.F10(symbol='688017', name='最新提示')
-# 包含最近的公告/分红/股东大会决议等摘要
-```
-
----
-
-## Layer 6: 信号层（V2 新增 + V2.1 大幅扩展）
-
-### 6.1 同花顺热点 — 当日强势股 + 题材归因 reason tags（独家）
-
-**核心价值：** akshare 只告诉你"哪些走强"，这个接口告诉你**"为什么走强"** —— 同花顺编辑部人工运营的题材标签。
+**核心价值：** 不只告诉你"哪些走强"，还告诉你**"为什么走强"** —— 同花顺编辑部人工运营的题材标签。
 
 ```python
 import requests
@@ -656,9 +635,9 @@ print(df[["代码", "名称", "涨幅%", "题材归因"]].head(10))
 | zhangdie | 涨跌额 | 元 |
 | market | 市场 | 沪/深/北 |
 
-### 6.2 同花顺北向资金 — hsgtApi 实时分钟流向 + 本地自缓存历史
+### 3.2 同花顺北向资金 — hsgtApi 实时分钟流向 + 本地自缓存历史
 
-> **V2.1 重大变更：** eastmoney 全系北向数据（akshare `stock_hsgt_hist_em`、datacenter API、push2his kamt.kline）自 2024-08 后净买额字段全部返回 NaN/None/0，属上游行业性断供。已改为**本地 CSV 自缓存模式**——每次拉实时数据后自动把收盘数据写入 `~/.tradingagents/cache/northbound_daily.csv`，历史越跑越丰富。
+> **已知行业性问题：** eastmoney 全系北向数据自 2024-08 后净买额字段返回 NaN/0，属上游断供。已改为**本地 CSV 自缓存模式**——每次拉实时数据后自动写入本地 CSV，历史越跑越丰富。
 
 ```python
 import requests
@@ -694,7 +673,7 @@ def hsgt_realtime() -> pd.DataFrame:
         "sgt_yi": sgt[:n] + [None] * (n - len(sgt)),
     })
 
-# === V2.1 自缓存辅助函数 ===
+# === 自缓存辅助函数 ===
 
 def _northbound_cache_path() -> Path:
     """北向资金本地 CSV 缓存路径"""
@@ -733,14 +712,14 @@ print(df.tail(5))
 # 用法 2: 自动缓存今日收盘数据
 if not df.empty:
     last = df.dropna().iloc[-1]
-    _save_northbound_snapshot("2026-05-12", last["hgt_yi"], last["sgt_yi"])
+    _save_northbound_snapshot("2026-05-17", last["hgt_yi"], last["sgt_yi"])
 
 # 用法 3: 读取历史
 hist = _load_northbound_history(20)
 print(hist)
 ```
 
-### 6.3 百度股市通 — 概念板块归属（V2.1 新增）
+### 3.3 百度股市通 — 概念板块归属
 
 **核心价值：** 一次调用拿到个股所属的行业（申万一级/二级）、概念（多个）、地域三维分类，含当日涨跌幅。
 
@@ -797,7 +776,7 @@ print("地域:", [b["name"] for b in blocks["region"]])
 
 > **踩坑：** `ResultCode` 返回类型不稳定——有时 int `0`，有时 string `"0"`。必须用 `str()` 统一比较。
 
-### 6.4 百度股市通 — 个股资金流向（V2.1 新增）
+### 3.4 百度股市通 — 个股资金流向（分钟级）
 
 实时分钟级 + 历史 20 交易日的主力/散户资金流向。
 
@@ -868,7 +847,7 @@ def baidu_fund_flow_history(code: str, days: int = 20) -> list[dict]:
     return rows
 
 # 用法 1: 分钟级实时
-realtime = baidu_fund_flow_realtime("000858", "20260512")
+realtime = baidu_fund_flow_realtime("000858", "20260517")
 if realtime:
     last = realtime[-1]
     signal = "bullish" if last["mainForce"] > 0 else "bearish"
@@ -880,15 +859,14 @@ for h in history[:5]:
     print(f"{h['date']}: 主力={h['mainIn']}万 超大单={h['superNetIn']}万")
 ```
 
-> **踩坑：** 实时数据格式是分号分隔的字符串（非 JSON 数组），`date` 参数用紧凑格式 `20260512` 而非 `2026-05-12`。
+> **踩坑：** 实时数据格式是分号分隔的字符串（非 JSON 数组），`date` 参数用紧凑格式 `20260517` 而非 `2026-05-17`。
 
-### 6.5 龙虎榜席位（V2.1 新增）
+### 3.5 龙虎榜席位 — 个股上榜记录 + 买卖席位 TOP5 + 机构动向
 
-akshare 三函数聚合——上榜记录 + 买卖席位 TOP5 + 机构买卖统计。
+直连东财 datacenter API，不依赖第三方封装。
 
 ```python
-import akshare as ak
-import pandas as pd
+import requests
 from datetime import datetime, timedelta
 
 def dragon_tiger_board(code: str, trade_date: str, look_back: int = 30) -> dict:
@@ -899,83 +877,77 @@ def dragon_tiger_board(code: str, trade_date: str, look_back: int = 30) -> dict:
     返回: {records: [...], seats: {buy: [...], sell: [...]}, institution: {...}}
     """
     start = datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=look_back)
-    start_str = start.strftime("%Y%m%d")
-    end_str = trade_date.replace("-", "")
+    start_str = start.strftime("%Y-%m-%d")
 
     # 1. 上榜记录
     records = []
-    try:
-        df = ak.stock_lhb_detail_em(
-            start_date=start_str,
-            end_date=end_str
-        )
-        if not df.empty:
-            df_stock = df[df["代码"] == code]
-            for _, row in df_stock.iterrows():
-                records.append({
-                    "date": str(row.get("日期", "")),
-                    "reason": row.get("解读", ""),
-                    "net_buy": row.get("龙虎榜净买额", 0),
-                    "turnover": row.get("换手率", 0),
-                })
-    except Exception:
-        pass
+    data = eastmoney_datacenter(
+        "RPT_DAILYBILLBOARD_DETAILSNEW",
+        filter_str=f"(TRADE_DATE>='{start_str}')(TRADE_DATE<='{trade_date}')(SECURITY_CODE=\"{code}\")",
+        page_size=50,
+        sort_columns="TRADE_DATE", sort_types="-1",
+    )
+    for row in data:
+        records.append({
+            "date": str(row.get("TRADE_DATE", ""))[:10],
+            "reason": row.get("EXPLANATION", ""),
+            "net_buy": round((row.get("BILLBOARD_NET_AMT") or 0) / 10000, 1),
+            "turnover": round(float(row.get("TURNOVERRATE") or 0), 2),
+        })
 
     # 2. 最近上榜的买卖席位
     seats = {"buy": [], "sell": []}
     if records:
-        latest_date = records[0]["date"].replace("-", "")[:8]
-        try:
-            df_detail = ak.stock_lhb_stock_detail_em(
-                symbol=code,
-                date=latest_date,
-                flag="买入"
-            )
-            if not df_detail.empty:
-                for _, row in df_detail.head(5).iterrows():
-                    seats["buy"].append({
-                        "name": row.get("营业部名称", ""),
-                        "buy_amt": row.get("买入额", 0),
-                        "sell_amt": row.get("卖出额", 0),
-                        "net": row.get("净额", 0),
-                    })
-        except Exception:
-            pass
-        try:
-            df_detail = ak.stock_lhb_stock_detail_em(
-                symbol=code,
-                date=latest_date,
-                flag="卖出"
-            )
-            if not df_detail.empty:
-                for _, row in df_detail.head(5).iterrows():
-                    seats["sell"].append({
-                        "name": row.get("营业部名称", ""),
-                        "buy_amt": row.get("买入额", 0),
-                        "sell_amt": row.get("卖出额", 0),
-                        "net": row.get("净额", 0),
-                    })
-        except Exception:
-            pass
+        latest_date = records[0]["date"]
+        # 买入席位
+        buy_data = eastmoney_datacenter(
+            "RPT_BILLBOARD_DAILYDETAILSBUY",
+            filter_str=f"(TRADE_DATE='{latest_date}')(SECURITY_CODE=\"{code}\")",
+            page_size=10,
+            sort_columns="BUY", sort_types="-1",
+        )
+        for row in buy_data[:5]:
+            seats["buy"].append({
+                "name": row.get("OPERATEDEPT_NAME", ""),
+                "buy_amt": round((row.get("BUY") or 0) / 10000, 1),
+                "sell_amt": round((row.get("SELL") or 0) / 10000, 1),
+                "net": round((row.get("NET") or 0) / 10000, 1),
+            })
+        # 卖出席位
+        sell_data = eastmoney_datacenter(
+            "RPT_BILLBOARD_DAILYDETAILSSELL",
+            filter_str=f"(TRADE_DATE='{latest_date}')(SECURITY_CODE=\"{code}\")",
+            page_size=10,
+            sort_columns="SELL", sort_types="-1",
+        )
+        for row in sell_data[:5]:
+            seats["sell"].append({
+                "name": row.get("OPERATEDEPT_NAME", ""),
+                "buy_amt": round((row.get("BUY") or 0) / 10000, 1),
+                "sell_amt": round((row.get("SELL") or 0) / 10000, 1),
+                "net": round((row.get("NET") or 0) / 10000, 1),
+            })
 
     # 3. 机构买卖统计
     institution = {}
-    try:
-        df_inst = ak.stock_lhb_jgmmtj_em(symbol=code)
-        if not df_inst.empty:
-            row = df_inst.iloc[0]
-            institution = {
-                "buy_count": row.get("买入机构数", 0),
-                "sell_count": row.get("卖出机构数", 0),
-                "net_amount": row.get("机构净买入额", 0),
-            }
-    except Exception:
-        pass
+    inst_data = eastmoney_datacenter(
+        "RPT_ORGANIZATION_BUSSINESS",
+        filter_str=f"(SECURITY_CODE=\"{code}\")",
+        page_size=1,
+        sort_columns="TRADE_DATE", sort_types="-1",
+    )
+    if inst_data:
+        row = inst_data[0]
+        institution = {
+            "buy_count": row.get("BUY_TIMES", 0),
+            "sell_count": row.get("SELL_TIMES", 0),
+            "net_amount": round((row.get("NET_BUY_AMT") or 0) / 10000, 1),
+        }
 
     return {"records": records, "seats": seats, "institution": institution}
 
 # 用法
-data = dragon_tiger_board("002475", "2026-05-12")
+data = dragon_tiger_board("002475", "2026-05-17")
 print(f"近30日上榜 {len(data['records'])} 次")
 for r in data["records"]:
     print(f"  {r['date']}: {r['reason']}")
@@ -987,12 +959,9 @@ if data["seats"]["buy"]:
 
 > **ST 股注意：** 5% 涨跌停更容易触发龙虎榜（"连续三日偏离值累计达12%"），科创板 20% 涨跌停则较少触发。
 
-### 6.6 限售解禁日历（V2.1 新增）
-
-个股历史解禁 + 未来 90 天待解禁预警。
+### 3.6 限售解禁日历 — 历史解禁 + 未来 90 天待解禁
 
 ```python
-import akshare as ak
 from datetime import datetime, timedelta
 
 def lockup_expiry(code: str, trade_date: str, forward_days: int = 90) -> dict:
@@ -1001,45 +970,43 @@ def lockup_expiry(code: str, trade_date: str, forward_days: int = 90) -> dict:
     返回: {history: [...], upcoming: [...]}
     """
     # 1. 历史解禁记录
+    history_data = eastmoney_datacenter(
+        "RPT_LIFT_STAGE",
+        filter_str=f"(SECURITY_CODE=\"{code}\")",
+        page_size=15,
+        sort_columns="FREE_DATE", sort_types="-1",
+    )
     history = []
-    try:
-        df = ak.stock_restricted_release_queue_em(symbol=code)
-        if not df.empty:
-            for _, row in df.head(15).iterrows():
-                history.append({
-                    "date": str(row.get("解禁时间", "")),
-                    "type": row.get("限售股类型", ""),
-                    "shares": row.get("解禁数量", 0),
-                    "ratio": row.get("实际解禁市值占总市值比例", 0),
-                })
-    except Exception:
-        pass
+    for row in history_data:
+        history.append({
+            "date": str(row.get("FREE_DATE", ""))[:10],
+            "type": row.get("LIMITED_STOCK_TYPE", ""),
+            "shares": row.get("FREE_SHARES_NUM", 0),
+            "ratio": row.get("FREE_RATIO", 0),
+        })
 
     # 2. 未来待解禁
-    upcoming = []
     end_date = datetime.strptime(trade_date, "%Y-%m-%d") + timedelta(days=forward_days)
-    end_str = end_date.strftime("%Y%m%d")
-    today_str = trade_date.replace("-", "")
-    try:
-        df = ak.stock_restricted_release_detail_em(
-            date=today_str
-        )
-        if not df.empty:
-            df_stock = df[df["股票代码"] == code]
-            for _, row in df_stock.iterrows():
-                upcoming.append({
-                    "date": str(row.get("解禁日期", "")),
-                    "type": row.get("限售股类型", ""),
-                    "shares": row.get("解禁数量", 0),
-                    "float_ratio": row.get("占流通股比例", 0),
-                })
-    except Exception:
-        pass
+    end_str = end_date.strftime("%Y-%m-%d")
+    upcoming_data = eastmoney_datacenter(
+        "RPT_LIFT_STAGE",
+        filter_str=f"(SECURITY_CODE=\"{code}\")(FREE_DATE>='{trade_date}')(FREE_DATE<='{end_str}')",
+        page_size=20,
+        sort_columns="FREE_DATE", sort_types="1",
+    )
+    upcoming = []
+    for row in upcoming_data:
+        upcoming.append({
+            "date": str(row.get("FREE_DATE", ""))[:10],
+            "type": row.get("LIMITED_STOCK_TYPE", ""),
+            "shares": row.get("FREE_SHARES_NUM", 0),
+            "ratio": row.get("FREE_RATIO", 0),
+        })
 
     return {"history": history, "upcoming": upcoming}
 
 # 用法
-data = lockup_expiry("002475", "2026-05-12")
+data = lockup_expiry("002475", "2026-05-17")
 print(f"历史解禁 {len(data['history'])} 批")
 for h in data["history"][:5]:
     print(f"  {h['date']}: {h['type']} 数量={h['shares']}")
@@ -1055,33 +1022,43 @@ else:
 - 定向增发机构配售股份（6-18 个月）
 - 股权激励限售股份
 
-### 6.7 行业横向对比（V2.1 新增）
+### 3.7 行业板块排名（V3.0 改用东财 — 同花顺加了反爬401）
 
-同花顺 90 行业板块涨跌幅排名，一次调用看全市场行业轮动。
+东财行业板块涨跌幅排名，一次调用看全市场行业轮动。
 
 ```python
-import akshare as ak
+import requests
 
 def industry_comparison(top_n: int = 20) -> dict:
     """
-    全行业涨跌幅排名（同花顺 ~90 个行业）。
+    全行业涨跌幅排名（东财行业板块，~100 个行业）。
     返回: {top: [...], bottom: [...], total: int}
     """
-    df = ak.stock_board_industry_summary_ths()
-    if df.empty:
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "pn": "1", "pz": "100", "po": "1", "np": "1",
+        "fltt": "2", "invt": "2",
+        "fs": "m:90+t:2",
+        "fields": "f2,f3,f4,f12,f13,f14,f104,f105,f128,f136,f140,f141,f207",
+    }
+    headers = {"User-Agent": UA}
+    r = requests.get(url, params=params, headers=headers, timeout=15)
+    d = r.json()
+    items = d.get("data", {}).get("diff", [])
+    if not items:
         return {"top": [], "bottom": [], "total": 0}
 
     rows = []
-    for i, row in df.iterrows():
+    for i, item in enumerate(items):
         rows.append({
             "rank": i + 1,
-            "name": row.get("板块", ""),
-            "change_pct": row.get("涨跌幅", 0),
-            "turnover_yi": row.get("总成交额", 0),
-            "net_inflow_yi": row.get("净流入", 0) if "净流入" in df.columns else None,
-            "up_count": row.get("上涨家数", 0),
-            "down_count": row.get("下跌家数", 0),
-            "leader": row.get("领涨股", ""),
+            "name": item.get("f14", ""),
+            "change_pct": item.get("f3", 0),
+            "code": item.get("f12", ""),
+            "up_count": item.get("f104", 0),
+            "down_count": item.get("f105", 0),
+            "leader": item.get("f140", ""),
+            "leader_change": item.get("f136", 0),
         })
 
     return {
@@ -1095,20 +1072,17 @@ data = industry_comparison(20)
 print(f"共 {data['total']} 个行业")
 print("\nTOP 10 涨幅:")
 for r in data["top"][:10]:
-    print(f"  {r['rank']}. {r['name']}: {r['change_pct']}% 成交{r['turnover_yi']}亿 领涨{r['leader']}")
+    print(f"  {r['rank']}. {r['name']}: {r['change_pct']}% 涨{r['up_count']}跌{r['down_count']} 领涨{r['leader']}")
 print("\nBOTTOM 5 跌幅:")
 for r in data["bottom"][-5:]:
     print(f"  {r['rank']}. {r['name']}: {r['change_pct']}%")
 ```
 
-> **踩坑：** 成交额列名是 `总成交额`（不是 `成交额`），领涨股列名是 `领涨股`（不是 `领涨股票`），金额单位已经是亿元。该函数无日期参数，返回最新交易日数据。
+### 3.8 全市场龙虎榜
 
-### 6.8 全市场龙虎榜（V2.1 新增）
-
-每日全市场龙虎榜汇总——当日所有触发龙虎榜的股票 + 上榜原因 + 买卖净额 + 换手率。直接调东财 datacenter API，不依赖 akshare（akshare `stock_lhb_detail_em` 存在空页面解析 bug）。
+每日全市场龙虎榜汇总——当日所有触发龙虎榜的股票 + 上榜原因 + 买卖净额 + 换手率。
 
 ```python
-import requests
 from datetime import datetime
 
 def daily_dragon_tiger(trade_date: str = None, min_net_buy: float = None) -> dict:
@@ -1121,29 +1095,18 @@ def daily_dragon_tiger(trade_date: str = None, min_net_buy: float = None) -> dic
     """
     if trade_date is None:
         trade_date = datetime.now().strftime("%Y-%m-%d")
-    url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
-    params = {
-        "reportName": "RPT_DAILYBILLBOARD_DETAILSNEW",
-        "columns": "ALL",
-        "filter": f"(TRADE_DATE>='{trade_date}')(TRADE_DATE<='{trade_date}')",
-        "pageNumber": "1",
-        "pageSize": "500",
-        "sortTypes": "-1",
-        "sortColumns": "BILLBOARD_NET_AMT",
-        "source": "WEB",
-        "client": "WEB",
-    }
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Referer": "https://data.eastmoney.com/",
-    }
-    r = requests.get(url, params=params, headers=headers, timeout=15)
-    d = r.json()
-    if not d.get("success") or not d.get("result") or not d["result"].get("data"):
+
+    data = eastmoney_datacenter(
+        "RPT_DAILYBILLBOARD_DETAILSNEW",
+        filter_str=f"(TRADE_DATE>='{trade_date}')(TRADE_DATE<='{trade_date}')",
+        page_size=500,
+        sort_columns="BILLBOARD_NET_AMT", sort_types="-1",
+    )
+    if not data:
         return {"date": trade_date, "total_records": 0, "stocks": [],
                 "note": "无数据（非交易日或盘后未更新）"}
-    data = d["result"]["data"]
-    actual_date = data[0].get("TRADE_DATE", "")[:10] if data else trade_date
+
+    actual_date = str(data[0].get("TRADE_DATE", ""))[:10] if data else trade_date
     stocks = []
     for row in data:
         net_buy = (row.get("BILLBOARD_NET_AMT") or 0) / 10000
@@ -1163,21 +1126,17 @@ def daily_dragon_tiger(trade_date: str = None, min_net_buy: float = None) -> dic
     return {"date": actual_date, "total_records": len(stocks), "stocks": stocks}
 
 # 用法
-data = daily_dragon_tiger("2026-05-09")
+data = daily_dragon_tiger("2026-05-16")
 print(f"{data['date']} 龙虎榜共 {data['total_records']} 条记录")
 for s in data["stocks"][:10]:
     print(f"  {s['code']} {s['name']}: {s['reason']} | 净买{s['net_buy_wan']}万 涨跌{s['change_pct']}%")
 
 # 只看净买入 > 5000 万的
-data = daily_dragon_tiger("2026-05-09", min_net_buy=5000)
+data = daily_dragon_tiger("2026-05-16", min_net_buy=5000)
 print(f"\n净买入 > 5000万: {data['total_records']} 条")
 ```
 
-> **与 6.5 龙虎榜席位的区别：** 6.5 是"查某只股票的龙虎榜历史 + 席位明细"（个股维度），6.8 是"查某天全市场所有上榜股票"（全市场维度）。前者回答"002475 最近上过龙虎榜吗"，后者回答"今天龙虎榜哪些票净买入最大"。
-
-> **数据源：** 东财 datacenter API（`RPT_DAILYBILLBOARD_DETAILSNEW`），绕过 akshare 的解析 bug。pageSize=500 足够覆盖单日所有记录（通常 80-120 条）。非交易日或收盘前调用返回空数据。
-
-### 6.9 信号层组合用法：题材热度 + 资金验证
+### 3.9 信号层组合用法：题材热度 + 资金验证
 
 ```python
 # 拉当日强势股 reason
@@ -1201,11 +1160,517 @@ hgt_close = df_north["hgt_yi"].dropna().iloc[-1] if not df_north.empty else 0
 sgt_close = df_north["sgt_yi"].dropna().iloc[-1] if not df_north.empty else 0
 print(f"\n北向收盘累计: 沪股通 {hgt_close} 亿 / 深股通 {sgt_close} 亿")
 
-# V2.1: 叠加行业对比，看哪些行业资金在流入
+# V3.0: 叠加行业对比，看哪些行业资金在流入
 comp = industry_comparison(10)
-print("\n行业资金流入 TOP 5:")
-for r in sorted(comp["top"], key=lambda x: x.get("net_inflow_yi") or 0, reverse=True)[:5]:
-    print(f"  {r['name']}: 净流入 {r.get('net_inflow_yi', 'N/A')} 亿")
+print("\n行业涨幅 TOP 5:")
+for r in comp["top"][:5]:
+    print(f"  {r['name']}: {r['change_pct']}% 涨{r['up_count']}跌{r['down_count']}")
+```
+
+---
+
+## Layer 4: 资金面 / 筹码层（V3.0 新增）
+
+### 4.1 融资融券明细
+
+```python
+def margin_trading(code: str, page_size: int = 30) -> list[dict]:
+    """
+    融资融券明细（日级）。
+    返回: [{date, rzye(融资余额), rzmre(融资买入), rqye(融券余额), ...}]
+    """
+    data = eastmoney_datacenter(
+        "RPTA_WEB_RZRQ_GGMX",
+        filter_str=f'(SCODE="{code}")',
+        page_size=page_size,
+        sort_columns="DATE", sort_types="-1",
+    )
+    rows = []
+    for row in data:
+        rows.append({
+            "date": str(row.get("DATE", ""))[:10],
+            "rzye": row.get("RZYE", 0),       # 融资余额(元)
+            "rzmre": row.get("RZMRE", 0),      # 融资买入额
+            "rzche": row.get("RZCHE", 0),      # 融资偿还额
+            "rqye": row.get("RQYE", 0),        # 融券余额(元)
+            "rqmcl": row.get("RQMCL", 0),      # 融券卖出量
+            "rqchl": row.get("RQCHL", 0),      # 融券偿还量
+            "rzrqye": row.get("RZRQYE", 0),    # 融资融券余额合计
+        })
+    return rows
+
+# 用法
+data = margin_trading("600519")
+for d in data[:5]:
+    print(f"{d['date']}: 融资余额={d['rzye']/1e8:.2f}亿 融券余额={d['rqye']/1e8:.2f}亿")
+```
+
+### 4.2 大宗交易
+
+```python
+def block_trade(code: str, page_size: int = 20) -> list[dict]:
+    """
+    大宗交易记录。
+    返回: [{date, price, vol, amount, buyer, seller, premium_pct}]
+    """
+    data = eastmoney_datacenter(
+        "RPT_DATA_OCCURTRADE",
+        filter_str=f'(SECURITY_CODE="{code}")',
+        page_size=page_size,
+        sort_columns="TRADE_DATE", sort_types="-1",
+    )
+    rows = []
+    for row in data:
+        close = row.get("CLOSE_PRICE") or 0
+        deal_price = row.get("DEAL_PRICE") or 0
+        premium = ((deal_price / close - 1) * 100) if close else 0
+        rows.append({
+            "date": str(row.get("TRADE_DATE", ""))[:10],
+            "price": deal_price,
+            "close": close,
+            "premium_pct": round(premium, 2),
+            "vol": row.get("DEAL_VOL", 0),
+            "amount": row.get("DEAL_AMT", 0),
+            "buyer": row.get("BUYER_NAME", ""),
+            "seller": row.get("SELLER_NAME", ""),
+        })
+    return rows
+
+# 用法
+data = block_trade("600519")
+for d in data[:5]:
+    print(f"{d['date']}: 价格={d['price']} 溢价={d['premium_pct']}% 买方={d['buyer']}")
+```
+
+### 4.3 股东户数变化
+
+```python
+def holder_num_change(code: str, page_size: int = 10) -> list[dict]:
+    """
+    股东户数变化（季度级）。
+    返回: [{date, holder_num, change_num, change_ratio, avg_shares}]
+    """
+    data = eastmoney_datacenter(
+        "RPT_HOLDERNUMLATEST",
+        filter_str=f'(SECURITY_CODE="{code}")',
+        page_size=page_size,
+        sort_columns="END_DATE", sort_types="-1",
+    )
+    rows = []
+    for row in data:
+        rows.append({
+            "date": str(row.get("END_DATE", ""))[:10],
+            "holder_num": row.get("HOLDER_NUM", 0),
+            "change_num": row.get("HOLDER_NUM_CHANGE", 0),
+            "change_ratio": row.get("HOLDER_NUM_RATIO", 0),  # 环比%
+            "avg_shares": row.get("AVG_FREE_SHARES", 0),     # 户均持股
+        })
+    return rows
+
+# 用法
+data = holder_num_change("600519")
+for d in data[:5]:
+    print(f"{d['date']}: 股东数={d['holder_num']} 变化={d['change_ratio']}% 户均={d['avg_shares']}")
+# 股东户数持续减少 = 筹码集中 = 主力吸筹信号
+```
+
+### 4.4 分红送转历史
+
+```python
+def dividend_history(code: str, page_size: int = 20) -> list[dict]:
+    """
+    分红送转历史。
+    返回: [{date, bonus_rmb(每股派息), transfer_ratio(转增比例), bonus_ratio(送股比例)}]
+    """
+    data = eastmoney_datacenter(
+        "RPT_SHAREBONUS_DET",
+        filter_str=f'(SECURITY_CODE="{code}")',
+        page_size=page_size,
+        sort_columns="EX_DIVIDEND_DATE", sort_types="-1",
+    )
+    rows = []
+    for row in data:
+        rows.append({
+            "date": str(row.get("EX_DIVIDEND_DATE", ""))[:10],
+            "bonus_rmb": row.get("PRETAX_BONUS_RMB", 0),    # 每股派息(税前)
+            "transfer_ratio": row.get("TRANSFER_RATIO", 0),  # 每10股转增
+            "bonus_ratio": row.get("BONUS_RATIO", 0),        # 每10股送股
+            "plan": row.get("ASSIGN_PROGRESS", ""),           # 进度
+        })
+    return rows
+
+# 用法
+data = dividend_history("600519")
+for d in data[:5]:
+    print(f"{d['date']}: 每股派息={d['bonus_rmb']}元 转增={d['transfer_ratio']} 送={d['bonus_ratio']}")
+```
+
+### 4.5 个股资金流（120日，日级）
+
+```python
+import requests
+
+def stock_fund_flow_120d(code: str) -> list[dict]:
+    """
+    个股资金流（日级，最近120个交易日）。
+    返回: [{date, main_net(主力净流入), small_net, mid_net, large_net, super_net}]
+    单位: 元
+    """
+    market_code = 1 if code.startswith("6") else 0
+    url = "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get"
+    params = {
+        "secid": f"{market_code}.{code}",
+        "fields1": "f1,f2,f3,f7",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
+        "lmt": "120",
+    }
+    r = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=15)
+    d = r.json()
+    klines = d.get("data", {}).get("klines", [])
+
+    rows = []
+    for line in klines:
+        parts = line.split(",")
+        if len(parts) >= 7:
+            rows.append({
+                "date": parts[0],
+                "main_net": float(parts[1]) if parts[1] != "-" else 0,
+                "small_net": float(parts[2]) if parts[2] != "-" else 0,
+                "mid_net": float(parts[3]) if parts[3] != "-" else 0,
+                "large_net": float(parts[4]) if parts[4] != "-" else 0,
+                "super_net": float(parts[5]) if parts[5] != "-" else 0,
+            })
+    return rows
+
+# 用法
+data = stock_fund_flow_120d("600519")
+for d in data[-5:]:
+    print(f"{d['date']}: 主力净流入={d['main_net']/1e4:.0f}万 超大单={d['super_net']/1e4:.0f}万")
+
+# 统计近20日主力净流入
+recent_20 = data[-20:]
+total_main = sum(d["main_net"] for d in recent_20)
+print(f"\n近20日主力累计净流入: {total_main/1e8:.2f}亿")
+```
+
+---
+
+## Layer 5: 新闻层
+
+### 5.1 东财个股新闻（直连 search-api-web）
+
+```python
+import requests
+import re
+import json
+
+def eastmoney_stock_news(code: str, page_size: int = 20) -> list[dict]:
+    """
+    东财个股新闻（JSONP 接口）。
+    返回: [{title, content, time, source, url}]
+    """
+    # 构造 JSONP 参数
+    cb = "jQuery_news"
+    url = "https://search-api-web.eastmoney.com/search/jsonp"
+    inner_params = json.dumps({
+        "uid": "",
+        "keyword": code,
+        "type": ["cmsArticleWebOld"],
+        "client": "web",
+        "clientType": "web",
+        "clientVersion": "curr",
+        "param": {"cmsArticleWebOld": {"searchScope": "default", "sort": "default",
+                  "pageIndex": 1, "pageSize": page_size, "preTag": "", "postTag": ""}},
+    }, separators=(',', ':'))
+    params = {"cb": cb, "param": inner_params}
+    headers = {"User-Agent": UA, "Referer": "https://so.eastmoney.com/"}
+    r = requests.get(url, params=params, headers=headers, timeout=15)
+
+    # 解析 JSONP
+    text = r.text
+    json_str = text[text.index("(") + 1 : text.rindex(")")]
+    d = json.loads(json_str)
+
+    rows = []
+    articles = d.get("result", {}).get("cmsArticleWebOld", {}).get("list", [])
+    for a in articles:
+        rows.append({
+            "title": re.sub(r'<[^>]+>', '', a.get("title", "")),
+            "content": re.sub(r'<[^>]+>', '', a.get("content", ""))[:200],
+            "time": a.get("date", ""),
+            "source": a.get("mediaName", ""),
+            "url": a.get("url", ""),
+        })
+    return rows
+
+# 用法
+news = eastmoney_stock_news("688017")
+for n in news[:5]:
+    print(f"  {n['time']} | {n['source']} | {n['title']}")
+```
+
+### 5.2 财联社快讯（直连 cls.cn）
+
+```python
+import requests
+
+def cls_telegraph(page_size: int = 50) -> list[dict]:
+    """
+    财联社电报（全市场实时快讯）。
+    返回: [{title, content, time}]
+    """
+    url = "https://www.cls.cn/nodeapi/telegraphList"
+    params = {"rn": str(page_size), "page": "1"}
+    headers = {"User-Agent": UA, "Referer": "https://www.cls.cn/"}
+    r = requests.get(url, params=params, headers=headers, timeout=10)
+    d = r.json()
+
+    rows = []
+    for item in d.get("data", {}).get("roll_data", []):
+        rows.append({
+            "title": item.get("title", "") or item.get("brief", ""),
+            "content": item.get("content", "") or item.get("brief", ""),
+            "time": item.get("ctime", ""),
+        })
+    return rows
+
+# 用法
+news = cls_telegraph()
+for n in news[:10]:
+    print(f"  {n['time']} | {n['title'][:60]}")
+```
+
+### 5.3 东财全球资讯（7x24）
+
+```python
+import requests
+
+def eastmoney_global_news(page_size: int = 50) -> list[dict]:
+    """
+    东方财富全球财经资讯（7x24 滚动）。
+    返回: [{title, summary, time}]
+    """
+    url = "https://np-weblist.eastmoney.com/comm/web/getFastNewsList"
+    params = {
+        "client": "web", "biz": "web_724",
+        "fastColumn": "102", "sortEnd": "",
+        "pageSize": str(page_size),
+    }
+    headers = {"User-Agent": UA, "Referer": "https://kuaixun.eastmoney.com/"}
+    r = requests.get(url, params=params, headers=headers, timeout=10)
+    d = r.json()
+
+    rows = []
+    for item in d.get("data", {}).get("fastNewsList", []):
+        rows.append({
+            "title": item.get("title", ""),
+            "summary": item.get("summary", "")[:200],
+            "time": item.get("showTime", ""),
+        })
+    return rows
+
+# 用法
+news = eastmoney_global_news()
+for n in news[:10]:
+    print(f"  {n['time']} | {n['title']}")
+```
+
+---
+
+## Layer 6: 基础数据层
+
+### 6.1 mootdx 财务快照（37字段季报数据）
+
+```python
+from mootdx.quotes import Quotes
+
+client = Quotes.factory(market='std')
+
+# market: 0=深圳, 1=上海
+fin = client.finance(symbol='688017')
+# 返回 37 个字段的季报快照:
+#   liutongguben(流通股本), zongguben(总股本)
+#   eps(每股收益), bvps(每股净资产), roe(净资产收益率%)
+#   profit(净利润), income(主营收入)
+#   meigujingzichan(每股净资产), meigugongjijin(每股公积金)
+#   meiguweifeipeili(每股未分配利润)
+#   等37个季报财务字段
+```
+
+### 6.2 mootdx F10（公司文本资料）
+
+```python
+from mootdx.quotes import Quotes
+
+client = Quotes.factory(market='std')
+
+# 9 大类文本数据:
+categories = [
+    "最新提示", "公司概况", "财务分析",
+    "股东研究", "股本结构", "资本运作",
+    "业内点评", "行业分析", "公司大事",
+]
+for cat in categories:
+    text = client.F10(symbol='688017', name=cat)
+    print(f"=== {cat} ===")
+    print(text[:200] if text else "(空)")
+```
+
+> **优化提示：** "股东研究" 中的【4.股东变化】章节含大量历史十大股东列表，实测 16000+ chars。建议只保留最新一期（-70% token）。
+
+### 6.3 东财个股基本面（直连 push2 API）
+
+```python
+import requests
+
+def eastmoney_stock_info(code: str) -> dict:
+    """
+    东财个股基本面信息。
+    返回: {code, name, industry, total_shares, float_shares, mcap, float_mcap, list_date}
+    """
+    market_code = 1 if code.startswith("6") else 0
+    url = "https://push2.eastmoney.com/api/qt/stock/get"
+    params = {
+        "fltt": "2", "invt": "2",
+        "fields": "f57,f58,f84,f85,f127,f116,f117,f189,f43",
+        "secid": f"{market_code}.{code}",
+    }
+    headers = {"User-Agent": UA}
+    r = requests.get(url, params=params, headers=headers, timeout=10)
+    d = r.json().get("data", {})
+    return {
+        "code": d.get("f57", ""),
+        "name": d.get("f58", ""),
+        "industry": d.get("f127", ""),
+        "total_shares": d.get("f84", 0),     # 总股本(股)
+        "float_shares": d.get("f85", 0),     # 流通股(股)
+        "mcap": d.get("f116", 0),            # 总市值(元)
+        "float_mcap": d.get("f117", 0),      # 流通市值(元)
+        "list_date": str(d.get("f189", "")), # 上市日期 YYYYMMDD
+        "price": d.get("f43", 0),
+    }
+
+# 用法
+info = eastmoney_stock_info("688017")
+print(f"{info['name']}({info['code']}): 行业={info['industry']} 总市值={info['mcap']/1e8:.0f}亿 上市={info['list_date']}")
+```
+
+### 6.4 新浪财报三表（资产负债表/利润表/现金流量表）
+
+```python
+import requests
+
+def sina_financial_report(code: str, report_type: str = "lrb") -> list[dict]:
+    """
+    新浪财报三表。
+    code: 6位代码
+    report_type: "fzb"(资产负债表) / "lrb"(利润表) / "llb"(现金流量表)
+    返回: 按报告期排序的财务数据列表
+    """
+    prefix = "sh" if code.startswith("6") else "sz"
+    paper_code = f"{prefix}{code}"
+    url = "https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022"
+    params = {
+        "paperCode": paper_code,
+        "source": report_type,
+        "type": "0",
+        "page": "1",
+        "num": "20",  # 最近20期
+    }
+    headers = {"User-Agent": UA}
+    r = requests.get(url, params=params, headers=headers, timeout=15)
+    d = r.json()
+
+    rows = []
+    result = d.get("result", {}).get("data", {})
+    # 结构: {report_type: [{...}, ...]}
+    items = result.get(report_type, [])
+    if isinstance(items, list):
+        rows = items
+    return rows
+
+# 用法: 利润表
+lrb = sina_financial_report("600519", "lrb")
+for item in lrb[:3]:
+    print(f"报告期: {item.get('报告日', '')} 净利润: {item.get('净利润', '')}")
+
+# 用法: 资产负债表
+fzb = sina_financial_report("600519", "fzb")
+
+# 用法: 现金流量表
+llb = sina_financial_report("600519", "llb")
+```
+
+---
+
+## Layer 7: 公告层
+
+### 7.1 巨潮公告（直连 cninfo.com.cn）
+
+```python
+import requests
+
+def cninfo_announcements(code: str, page_size: int = 30) -> list[dict]:
+    """
+    巨潮公告全文检索。
+    返回: [{title, type, date, url}]
+    """
+    url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
+    # 判断市场
+    if code.startswith("6"):
+        plate = "sh"
+    elif code.startswith("8"):
+        plate = "bj"
+    else:
+        plate = "sz"
+
+    payload = {
+        "stock": f"{code},{plate}",
+        "tabName": "fulltext",
+        "pageSize": str(page_size),
+        "pageNum": "1",
+        "column": plate.upper() + "E" if plate == "sz" else plate.upper() + "E",
+        "category": "",
+        "plate": "",
+        "seDate": "",
+        "searchkey": "",
+        "secid": "",
+        "sortName": "",
+        "sortType": "",
+        "isHLtitle": "true",
+    }
+    headers = {
+        "User-Agent": UA,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://www.cninfo.com.cn/new/disclosure",
+        "Origin": "https://www.cninfo.com.cn",
+    }
+    r = requests.post(url, data=payload, headers=headers, timeout=15)
+    d = r.json()
+
+    rows = []
+    for item in d.get("announcements", []) or []:
+        rows.append({
+            "title": item.get("announcementTitle", ""),
+            "type": item.get("announcementTypeName", ""),
+            "date": item.get("announcementTime", ""),
+            "url": f"https://www.cninfo.com.cn/new/disclosure/detail?annoId={item.get('announcementId', '')}",
+        })
+    return rows
+
+# 用法
+anns = cninfo_announcements("688017")
+for a in anns[:10]:
+    print(f"  {a['date']} | {a['type']} | {a['title']}")
+```
+
+### 7.2 mootdx F10 公告摘要
+
+```python
+from mootdx.quotes import Quotes
+client = Quotes.factory(market='std')
+text = client.F10(symbol='688017', name='最新提示')
+# 包含最近的公告/分红/股东大会决议等摘要
 ```
 
 ---
@@ -1276,9 +1741,10 @@ def calc_peg(pe: float, cagr: float) -> float:
 ### 流程 A: 单票完整估值（30秒）
 
 ```python
-import akshare as ak
+import requests
 import urllib.request
 import math
+import pandas as pd
 
 def full_valuation(code: str) -> dict:
     """单票完整估值分析"""
@@ -1295,18 +1761,21 @@ def full_valuation(code: str) -> dict:
     pe_ttm = float(vals[39]) if vals[39] else 0
     pb = float(vals[46]) if vals[46] else 0
 
-    # 2. 机构一致预期
-    df = ak.stock_profit_forecast_ths(symbol=code, indicator="预测年报每股收益")
+    # 2. 机构一致预期（直连同花顺）
+    df = ths_eps_forecast(code)
     eps_cur = eps_next = None
     analyst_count = 0
-    years_sorted = sorted(df["年度"].unique())
-    for _, row in df.iterrows():
-        y = str(row["年度"])
-        if y == str(years_sorted[0]) if len(years_sorted) > 0 else False:
-            eps_cur = float(row["均值"])
-            analyst_count = int(row["预测机构数"])
-        elif y == str(years_sorted[1]) if len(years_sorted) > 1 else False:
-            eps_next = float(row["均值"])
+    if not df.empty and len(df.columns) >= 3:
+        # 解析表格（列结构因页面可能变化，取前两行数据行）
+        try:
+            for i, row in df.iterrows():
+                if i == 0:
+                    eps_cur = float(row.iloc[2]) if pd.notna(row.iloc[2]) else None
+                    analyst_count = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
+                elif i == 1:
+                    eps_next = float(row.iloc[2]) if pd.notna(row.iloc[2]) else None
+        except (ValueError, IndexError):
+            pass
 
     # 3. 估值指标
     pe_fwd = price / eps_cur if eps_cur else float("inf")
@@ -1379,13 +1848,13 @@ for a in all_articles[:10]:
             print(f"  {stock_code}: 东财 {len(em)} 篇")
 ```
 
-### 流程 D: 新标的快速调研（V2.1 增强版）
+### 流程 D: 新标的快速调研（V3.0 增强版）
 
 ```python
 code = "688017"
 
 # 1. 有无机构覆盖？
-forecast = ak.stock_profit_forecast_ths(symbol=code, indicator="预测年报每股收益")
+forecast = ths_eps_forecast(code)
 print(f"机构覆盖: {'有' if not forecast.empty else '无'}")
 
 # 2. 实时估值
@@ -1396,23 +1865,39 @@ print(f"PE={q['pe_ttm']} PB={q['pb']} 市值={q['mcap_yi']}亿")
 # 3. PE消化 → 用 full_valuation()
 # 4. PEG校验
 
-# 5. V2.1: 概念板块归属
+# 5. 概念板块归属
 blocks = baidu_concept_blocks(code)
 print(f"概念: {', '.join(blocks['concept_tags'][:10])}")
 
-# 6. V2.1: 资金流向
+# 6. 资金流向（百度分钟级）
 flow = baidu_fund_flow_history(code)
 if flow:
     recent = flow[0]
     print(f"最近主力净流入: {recent['mainIn']}万")
 
-# 7. V2.1: 龙虎榜
-dtb = dragon_tiger_board(code, "2026-05-12")
+# 7. 资金流向（东财120日）
+flow_120 = stock_fund_flow_120d(code)
+if flow_120:
+    total = sum(d["main_net"] for d in flow_120[-20:])
+    print(f"近20日主力累计净流入: {total/1e8:.2f}亿")
+
+# 8. 龙虎榜
+dtb = dragon_tiger_board(code, "2026-05-17")
 print(f"近30日上龙虎榜: {len(dtb['records'])} 次")
 
-# 8. V2.1: 解禁预警
-lockup = lockup_expiry(code, "2026-05-12")
+# 9. 解禁预警
+lockup = lockup_expiry(code, "2026-05-17")
 print(f"未来90天待解禁: {len(lockup['upcoming'])} 批")
+
+# 10. 融资融券
+margin = margin_trading(code, page_size=5)
+if margin:
+    print(f"最新融资余额: {margin[0]['rzye']/1e8:.2f}亿")
+
+# 11. 股东户数
+holders = holder_num_change(code)
+if holders:
+    print(f"最新股东数: {holders[0]['holder_num']} 环比{holders[0]['change_ratio']}%")
 ```
 
 ---
@@ -1422,15 +1907,20 @@ print(f"未来90天待解禁: {len(lockup['upcoming'])} 批")
 | 优先级 | 数据源 | 用途 | 可靠性 | 封IP风险 |
 |--------|--------|------|--------|---------|
 | 1 | **mootdx** (TCP) | K线+五档盘口+逐笔成交+财务快照+F10 | 极稳定 | 极低 |
-| 2 | **腾讯财经** (HTTP) | 实时PE/PB/市值/换手率/涨跌停 | 稳定 | 低 |
-| 3 | **akshare** (Python) | 研报+一致预期+新闻+公告+龙虎榜+解禁+行业 | 稳定 | 中(东财源) |
-| 4 | **iwencai** (OpenAPI) | NL主题搜索研报(唯一能力) | 需X-Claw Header | 低 |
-| 5 | **东财PDF** (HTTP) | 完整研报图表、评级 | 稳定但需下载 | 低 |
-| 6 | **同花顺热点** (HTTP) | 当日强势股+题材归因 reason tags | 稳定 73ms | 极低（零鉴权） |
-| 7 | **同花顺 hsgtApi** (HTTP) | 北向资金分钟级+自缓存历史 | 稳定 | 极低（零鉴权） |
-| 8 | **百度股市通** (HTTP) | 概念板块+个股资金流向 | 稳定 | 极低（零鉴权） |
+| 2 | **腾讯财经** (HTTP) | 实时PE/PB/市值/换手率/涨跌停/指数/ETF | 稳定 | 低 |
+| 3 | **东财 datacenter** (HTTP) | 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红/个股信息 | 稳定 | 低 |
+| 4 | **东财 push2/push2his** (HTTP) | 行业板块/个股资金流120日 | 稳定 | 低 |
+| 5 | **iwencai** (OpenAPI) | NL主题搜索研报(唯一能力) | 需X-Claw Header | 低 |
+| 6 | **东财 reportapi/PDF** (HTTP) | 完整研报图表、评级 | 稳定 | 低 |
+| 7 | **同花顺热点** (HTTP) | 当日强势股+题材归因 reason tags | 稳定 73ms | 极低（零鉴权） |
+| 8 | **同花顺 hsgtApi** (HTTP) | 北向资金分钟级+自缓存历史 | 稳定 | 极低（零鉴权） |
+| 9 | **百度股市通** (HTTP) | 概念板块+个股资金流向+K线带MA | 稳定 | 极低（零鉴权） |
+| 10 | **新浪财经** (HTTP) | 资产负债表/利润表/现金流量表 | 稳定 | 低 |
+| 11 | **同花顺 basic** (HTTP) | 一致预期EPS | 稳定(需UA) | 低 |
+| 12 | **财联社** (HTTP) | 全市场实时电报 | 稳定 | 低 |
+| 13 | **巨潮 cninfo** (HTTP) | 公告全文检索+下载 | 稳定 | 低 |
 
-**原则：** 行情走 mootdx+腾讯（不封IP），研报走 akshare+东财PDF，iwencai 仅用于 NL 主题搜索，**信号层走同花顺+百度直连接口（零鉴权 + 编辑部人工运营 tags + 分钟级资金流向）**。
+**原则：** 行情走 mootdx+腾讯（不封IP），研报走东财+iwencai，资金面走东财 datacenter，**信号层走同花顺+百度直连接口（零鉴权 + 分钟级资金流向）**。全部直连 HTTP，零第三方数据封装依赖。
 
 ---
 
@@ -1439,14 +1929,14 @@ print(f"未来90天待解禁: {len(lockup['upcoming'])} 批")
 ### Q: mootdx 和腾讯有什么区别？
 A: 互补关系。mootdx = 交易层（价格+盘口+K线），腾讯 = 估值层（PE/PB/市值/换手率/涨跌停价）。两者都不封IP。
 
+### Q: V3.0 为什么移除 akshare？
+A: akshare 本质是对东财/同花顺/新浪等公开 API 的封装，中间层增加了故障点（版本兼容 bug、pandas 3.0 ArrowInvalid 等）。V3.0 直连底层 HTTP API，零中间依赖，更稳定可控。
+
 ### Q: iwencai 返回 401
 A: 检查两点：(1) API Key 是否有效 (2) 是否携带了 X-Claw-* Headers。SkillHub 2.0 后必须带 X-Claw Headers，否则一律 401。
 
-### Q: akshare 报 ConnectionError / 超时
-A: 同花顺和东财有反爬，加 `time.sleep(1~3)` 再重试。mootdx 和腾讯不受影响。
-
-### Q: stock_profit_forecast_ths 返回空 DataFrame
-A: 该股票无机构覆盖。"预测年报每股收益" indicator 最稳定，"预测详细指标" 有时返回空。小盘/次新/ST 股常见。
+### Q: 同花顺一致预期 ths_eps_forecast 返回空
+A: 该股票无机构覆盖。小盘/次新/ST 股常见。可 fallback 到东财 reportapi 里的 predictThisYearEps 字段。
 
 ### Q: 东财 PDF 下载 403
 A: 必须带 `Referer: https://data.eastmoney.com/` header。
@@ -1461,31 +1951,22 @@ A: **不是！** 43=振幅%，46=PB。网上很多教程写错了，这里是实
 A: `size` 参数默认 10，调到 50。隐藏参数，文档未写明但实测可用。
 
 ### Q: 哪些数据源需要 API Key？
-A: 只有 iwencai 需要。mootdx / 腾讯 / akshare / 巨潮 / 同花顺 / 百度股市通全部免费无 key。
+A: 只有 iwencai 需要。mootdx / 腾讯 / 东财 / 同花顺 / 百度股市通 / 新浪 / 巨潮 / 财联社全部免费无 key。
 
 ### Q: 同花顺热点接口需要 cookie 吗？
 A: **不需要**。仅 User-Agent 即可，零鉴权 73ms 拿到 ~125 只当日强势股。但**不要去打 search.10jqka.com.cn 的 iwencai NL 选股接口** —— 那个有 hexin-v cookie JS 签名鉴权，跟热点接口完全两码事。
 
-### Q: 同花顺热点 reason 字段为空怎么办？
-A: 两种情况：(1) 当日盘后数据还没更新，等到 15:30 之后再调；(2) 个别 ST 股或暂停股没有人工标注。`reason` 字段允许 None，过滤 `df.dropna(subset=["题材归因"])` 即可。
-
-### Q: hsgtApi 北向资金数据跟东财 push2 不一致？
-A: 不是 bug，两个源采样口径不同。同花顺 hsgtApi 给**累计净买入**（每分钟从 09:10 累加），东财 push2 给**当前流入流出比**。做交叉验证时用 hsgtApi 看趋势，用东财看实时强度。
-
-### Q: 同花顺热点接口能拉历史日期吗？
-A: 可以。URL 里的 `date/{YYYY-MM-DD}/` 替换成历史日期即可，节假日和周末返回空数组。建议本地缓存（比如 SQLite 按日期存），避免重复拉。
-
 ### Q: 百度股市通 ResultCode 有时是 0 有时是 "0"？
-A: 已知坑。`ResultCode` 返回类型不稳定——有时 int，有时 string。代码里必须用 `str(d.get("ResultCode", -1)) != "0"` 统一比较。无官方 API 文档，字段可能随时变更。
+A: 已知坑。`ResultCode` 返回类型不稳定——有时 int，有时 string。代码里必须用 `str(d.get("ResultCode", -1)) != "0"` 统一比较。
 
 ### Q: 北向资金历史数据为什么只有最近几天？
-A: V2.1 改为本地自缓存模式。eastmoney 全系北向数据自 2024-08 起断供（净买额字段返回 NaN/0）。每次调用实时 API 后自动写入本地 CSV，历史越跑越丰富。新用户首次运行只有当天数据。
+A: 本地自缓存模式。eastmoney 全系北向数据自 2024-08 起断供（净买额字段返回 NaN/0）。每次调用实时 API 后自动写入本地 CSV，历史越跑越丰富。
 
-### Q: 龙虎榜 ST 股为什么上榜频率高？
-A: ST 股涨跌停限制 5%（正常股 10%，科创板 20%），触发"连续三日偏离值累计达12%"的概率更高。科创板则相反，20% 涨跌停不容易触发龙虎榜。
+### Q: 行业板块为什么从同花顺换成东财？
+A: 同花顺 `stock_board_industry_summary_ths` 接口 2026 年初加了反爬 401（需要登录态）。东财 push2 行业板块数据（`m:90+t:2`）是完美替代，零鉴权且字段更丰富。
 
 ### Q: 在海外服务器跑，mootdx 接口超时？
-A: mootdx 走 TCP 直连通达信行情服务器，需国内 IP 才稳定。海外环境建议走代理或切换到 yfinance。腾讯财经和百度股市通不受影响。
+A: mootdx 走 TCP 直连通达信行情服务器，需国内 IP 才稳定。海外环境建议走代理。腾讯财经和百度股市通不受影响。
 
 ### Q: 不用 Claude Code，能用吗？
 A: 能。SKILL.md 本质是 Markdown + 内嵌 Python 代码。Codex、OpenClaw 或任何 AI 编程助手都能读取。你也可以直接把 Python 代码段复制出来在自己的脚本里跑。
@@ -1502,7 +1983,7 @@ mkdir -p ~/.claude/skills/a-stock-data
 cp SKILL.md ~/.claude/skills/a-stock-data/SKILL.md
 
 # 3. 安装 Python 依赖
-pip install mootdx akshare requests pandas stockstats
+pip install mootdx requests pandas stockstats
 
 # 4. (可选) 配置 iwencai API Key
 export IWENCAI_API_KEY="your_key_here"
