@@ -1,19 +1,21 @@
 ---
 name: a-stock-data
-description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+百度PAE+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
+description: A股全栈数据工具包 — 覆盖行情(mootdx+腾讯+百度K线)、研报(东财+同花顺+iwencai)、信号(同花顺热点+北向+龙虎榜+解禁+行业)、资金面(融资融券+大宗交易+股东户数+分红+资金流分钟级+资金流120日)、新闻(东财+财联社)、基础数据(mootdx财务/F10+东财+新浪三表)、公告(巨潮)七层数据源，内嵌全部调用代码，自包含零依赖外部文件。适用于个股估值、研报检索、题材归因、龙虎榜跟踪、解禁预警、行业轮动、融资融券跟踪、筹码分析、产业链调研、批量筛选等场景。
 origin: custom
-version: 3.0
+version: 3.1
 ---
 
 > 📦 项目主页：https://github.com/simonlin1212/a-stock-data — 更新、反馈、支持作者
 > 
 > 作者：Simon 林 · 抖音「Simon林」· 公众号「硅基世纪」
 
-# A股全栈数据工具包 V3.0
+# A股全栈数据工具包 V3.1
 
-七层数据架构，28 个端点，全部实测可用（2026-05-17 验证，覆盖主板/中小板/科创板/ST）。
+七层数据架构，28 个端点，全部实测可用（2026-05-19 验证，覆盖主板/中小板/科创板/ST）。
 
-> **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。新增资金面/筹码层（融资融券+大宗交易+股东户数+分红+个股资金流120日）+ 百度K线(带MA) + 指数/ETF行情 + 行业板块改用东财（同花顺加了反爬401）。
+> **V3.1 修复：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易 RPT 报表名更新、机构席位改用 BUY/SELL 明细筛选）+ 修复东财全球资讯 req_trace 参数 + 修复巨潮公告 orgId 格式。
+>
+> **V3.0 Breaking Change**：彻底移除 akshare 依赖，所有数据源改为直连 HTTP API（零第三方数据依赖，仅 mootdx 保留 TCP）。
 
 **使用方式：** 将本文件放入 `~/.claude/skills/a-stock-data/SKILL.md`，Claude Code 会自动识别并在 A 股相关对话中激活。
 
@@ -31,17 +33,18 @@ version: 3.0
 信号层
 ├── 同花顺热点     → 当日强势股 + 题材归因 reason tags (零鉴权 73ms)
 ├── 同花顺北向     → hgt/sgt 分钟资金流向 + 本地自缓存历史
-├── 百度股市通     → 概念板块归属 + 个股资金流向 (分钟级)
+├── 百度股市通     → 概念板块归属 (HTTP)
 ├── 龙虎榜席位     → 上榜记录 + 买卖席位 TOP5 + 机构动向 (datacenter-web)
 ├── 全市场龙虎榜   → 每日全市场上榜股票 + 净买额排名 (datacenter-web)
 ├── 限售解禁日历   → 历史解禁 + 未来90天待解禁 (datacenter-web)
 └── 行业板块排名   → 东财行业涨跌/上涨下跌家数 (V3.0 替换同花顺)
 
-资金面 / 筹码层（V3.0 新增）
+资金面 / 筹码层
 ├── 融资融券明细   → 日级融资余额/买入/偿还 + 融券 (datacenter-web)
 ├── 大宗交易       → 成交价/量 + 买卖方营业部 (datacenter-web)
 ├── 股东户数变化   → 季度股东户数 + 环比变化 (datacenter-web)
 ├── 分红送转       → 历史每股派息/送股/转增 (datacenter-web)
+├── 个股资金流分钟级 → 盘中主力/大单/中单/小单 分钟净流入 (push2)
 └── 个股资金流120日 → 主力/大单/中单/小单 日级净流入 (push2his)
 
 新闻层
@@ -776,90 +779,58 @@ print("地域:", [b["name"] for b in blocks["region"]])
 
 > **踩坑：** `ResultCode` 返回类型不稳定——有时 int `0`，有时 string `"0"`。必须用 `str()` 统一比较。
 
-### 3.4 百度股市通 — 个股资金流向（分钟级）
+### 3.4 东财 push2 — 个股资金流向（分钟级）
 
-实时分钟级 + 历史 20 交易日的主力/散户资金流向。
+盘中实时分钟级资金流（主力/大单/中单/小单/超大单净流入）。
+
+> **V3.1 替换说明：** 百度 PAE `fundflow` 和 `fundsortlist` 接口已于 2026-05 下线（返回 null），改用东财 push2 资金流 API。日级资金流见 Layer 4.5 `stock_fund_flow_120d()`。
 
 ```python
 import requests
 
-def baidu_fund_flow_realtime(code: str, date: str) -> list[dict]:
+def eastmoney_fund_flow_minute(code: str) -> list[dict]:
     """
-    个股资金流向（分钟级）。
-    date: YYYYMMDD 紧凑格式
-    返回: [{time, mainForce, retail, super, large, price}, ...]
+    个股资金流向（分钟级，当日盘中）。
+    code: 6位股票代码
+    返回: [{time, main_net, small_net, mid_net, large_net, super_net}, ...]
+    单位: 元
     """
-    url = (
-        f"https://finance.pae.baidu.com/vapi/v1/fundflow"
-        f"?code={code}&market=ab&date={date}"
-        f"&finClientType=pc"
-    )
-    r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
+    secid = f"1.{code}" if code.startswith("6") else f"0.{code}"
+    url = "https://push2.eastmoney.com/api/qt/stock/fflow/kline/get"
+    params = {
+        "secid": secid, "klt": 1,
+        "fields1": "f1,f2,f3,f7",
+        "fields2": "f51,f52,f53,f54,f55,f56,f57",
+    }
+    r = requests.get(url, timeout=10)
     d = r.json()
-    if str(d.get("ResultCode", -1)) != "0":
-        return []
-
-    raw = d.get("Result", {}).get("update_data", "")
-    if not raw:
-        return []
 
     rows = []
-    for segment in raw.split(";"):
-        parts = segment.split(",")
-        if len(parts) >= 9:
+    for line in d.get("data", {}).get("klines", []):
+        parts = line.split(",")
+        if len(parts) >= 6:
             rows.append({
                 "time": parts[0],
-                "mainForce": float(parts[2]) if parts[2] else 0,
-                "retail": float(parts[3]) if parts[3] else 0,
-                "super": float(parts[4]) if parts[4] else 0,
-                "large": float(parts[5]) if parts[5] else 0,
-                "price": float(parts[8]) if parts[8] else 0,
+                "main_net": float(parts[1]),
+                "small_net": float(parts[2]),
+                "mid_net": float(parts[3]),
+                "large_net": float(parts[4]),
+                "super_net": float(parts[5]),
             })
     return rows
 
-def baidu_fund_flow_history(code: str, days: int = 20) -> list[dict]:
-    """
-    个股资金流向（日级，最近 N 交易日）。
-    返回: [{date, close, change_pct, superNetIn, largeNetIn, mediumNetIn, littleNetIn, mainIn}, ...]
-    """
-    url = (
-        f"https://finance.pae.baidu.com/vapi/v1/fundsortlist"
-        f"?code={code}&market=ab&pn=0&rn={days}"
-        f"&finClientType=pc"
-    )
-    r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
-    d = r.json()
-    if str(d.get("ResultCode", -1)) != "0":
-        return []
-
-    rows = []
-    for item in d.get("Result", {}).get("list", []):
-        rows.append({
-            "date": item.get("showtime", ""),
-            "close": item.get("closepx", ""),
-            "change_pct": item.get("ratio", ""),
-            "superNetIn": item.get("superNetIn", ""),
-            "largeNetIn": item.get("largeNetIn", ""),
-            "mediumNetIn": item.get("mediumNetIn", ""),
-            "littleNetIn": item.get("littleNetIn", ""),
-            "mainIn": item.get("extMainIn", ""),
-        })
-    return rows
-
-# 用法 1: 分钟级实时
-realtime = baidu_fund_flow_realtime("000858", "20260517")
+# 用法: 分钟级实时资金流
+realtime = eastmoney_fund_flow_minute("000858")
 if realtime:
     last = realtime[-1]
-    signal = "bullish" if last["mainForce"] > 0 else "bearish"
-    print(f"主力净流入: {last['mainForce']}万 → {signal}")
-
-# 用法 2: 20日历史
-history = baidu_fund_flow_history("000858")
-for h in history[:5]:
-    print(f"{h['date']}: 主力={h['mainIn']}万 超大单={h['superNetIn']}万")
+    signal = "bullish" if last["main_net"] > 0 else "bearish"
+    print(f"主力净流入: {last['main_net']:.0f}元 → {signal}")
+    # 统计全天主力净流入
+    total = sum(r["main_net"] for r in realtime)
+    print(f"全天主力累计: {total/1e4:.0f}万元")
 ```
 
-> **踩坑：** 实时数据格式是分号分隔的字符串（非 JSON 数组），`date` 参数用紧凑格式 `20260517` 而非 `2026-05-17`。
+> **注意：** push2 资金流金额单位是**元**（非万元），使用时注意换算。`klt=1` 分钟级，`klt=101` 日级。
 
 ### 3.5 龙虎榜席位 — 个股上榜记录 + 买卖席位 TOP5 + 机构动向
 
@@ -928,21 +899,19 @@ def dragon_tiger_board(code: str, trade_date: str, look_back: int = 30) -> dict:
                 "net": round((row.get("NET") or 0) / 10000, 1),
             })
 
-    # 3. 机构买卖统计
-    institution = {}
-    inst_data = eastmoney_datacenter(
-        "RPT_ORGANIZATION_BUSSINESS",
-        filter_str=f"(SECURITY_CODE=\"{code}\")",
-        page_size=1,
-        sort_columns="TRADE_DATE", sort_types="-1",
-    )
-    if inst_data:
-        row = inst_data[0]
-        institution = {
-            "buy_count": row.get("BUY_TIMES", 0),
-            "sell_count": row.get("SELL_TIMES", 0),
-            "net_amount": round((row.get("NET_BUY_AMT") or 0) / 10000, 1),
-        }
+    # 3. 机构买卖统计（从买卖席位明细中筛选 OPERATEDEPT_CODE="0" 即机构专用席位）
+    institution = {"buy_amt": 0, "sell_amt": 0, "net_amt": 0}
+    for detail_data, side in [(buy_data, "buy"), (sell_data, "sell")]:
+        for row in detail_data:
+            if str(row.get("OPERATEDEPT_CODE", "")) == "0":
+                amt = (row.get("BUY") or 0) if side == "buy" else (row.get("SELL") or 0)
+                if side == "buy":
+                    institution["buy_amt"] += amt
+                else:
+                    institution["sell_amt"] += amt
+    institution["buy_amt"] = round(institution["buy_amt"] / 10000, 1)
+    institution["sell_amt"] = round(institution["sell_amt"] / 10000, 1)
+    institution["net_amt"] = round(institution["buy_amt"] - institution["sell_amt"], 1)
 
     return {"records": records, "seats": seats, "institution": institution}
 
@@ -1214,7 +1183,7 @@ def block_trade(code: str, page_size: int = 20) -> list[dict]:
     返回: [{date, price, vol, amount, buyer, seller, premium_pct}]
     """
     data = eastmoney_datacenter(
-        "RPT_DATA_OCCURTRADE",
+        "RPT_DATA_BLOCKTRADE",
         filter_str=f'(SECURITY_CODE="{code}")',
         page_size=page_size,
         sort_columns="TRADE_DATE", sort_types="-1",
@@ -1229,7 +1198,7 @@ def block_trade(code: str, page_size: int = 20) -> list[dict]:
             "price": deal_price,
             "close": close,
             "premium_pct": round(premium, 2),
-            "vol": row.get("DEAL_VOL", 0),
+            "vol": row.get("DEAL_VOLUME", 0),
             "amount": row.get("DEAL_AMT", 0),
             "buyer": row.get("BUYER_NAME", ""),
             "seller": row.get("SELLER_NAME", ""),
@@ -1445,6 +1414,8 @@ for n in news[:10]:
 ```python
 import requests
 
+import uuid
+
 def eastmoney_global_news(page_size: int = 50) -> list[dict]:
     """
     东方财富全球财经资讯（7x24 滚动）。
@@ -1455,6 +1426,7 @@ def eastmoney_global_news(page_size: int = 50) -> list[dict]:
         "client": "web", "biz": "web_724",
         "fastColumn": "102", "sortEnd": "",
         "pageSize": str(page_size),
+        "req_trace": str(uuid.uuid4()),
     }
     headers = {"User-Agent": UA, "Referer": "https://kuaixun.eastmoney.com/"}
     r = requests.get(url, params=params, headers=headers, timeout=10)
@@ -1616,20 +1588,20 @@ def cninfo_announcements(code: str, page_size: int = 30) -> list[dict]:
     返回: [{title, type, date, url}]
     """
     url = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
-    # 判断市场
+    # 构造 orgId（巨潮 2026 新格式）
     if code.startswith("6"):
-        plate = "sh"
-    elif code.startswith("8"):
-        plate = "bj"
+        org_id = f"gssh0{code}"
+    elif code.startswith("8") or code.startswith("4"):
+        org_id = f"gsbj0{code}"
     else:
-        plate = "sz"
+        org_id = f"gssz0{code}"
 
     payload = {
-        "stock": f"{code},{plate}",
+        "stock": f"{code},{org_id}",
         "tabName": "fulltext",
         "pageSize": str(page_size),
         "pageNum": "1",
-        "column": plate.upper() + "E" if plate == "sz" else plate.upper() + "E",
+        "column": "",
         "category": "",
         "plate": "",
         "seDate": "",
@@ -1909,18 +1881,18 @@ if holders:
 | 1 | **mootdx** (TCP) | K线+五档盘口+逐笔成交+财务快照+F10 | 极稳定 | 极低 |
 | 2 | **腾讯财经** (HTTP) | 实时PE/PB/市值/换手率/涨跌停/指数/ETF | 稳定 | 低 |
 | 3 | **东财 datacenter** (HTTP) | 龙虎榜/解禁/融资融券/大宗交易/股东户数/分红/个股信息 | 稳定 | 低 |
-| 4 | **东财 push2/push2his** (HTTP) | 行业板块/个股资金流120日 | 稳定 | 低 |
+| 4 | **东财 push2/push2his** (HTTP) | 行业板块/个股资金流分钟级+120日 | 稳定 | 低 |
 | 5 | **iwencai** (OpenAPI) | NL主题搜索研报(唯一能力) | 需X-Claw Header | 低 |
 | 6 | **东财 reportapi/PDF** (HTTP) | 完整研报图表、评级 | 稳定 | 低 |
 | 7 | **同花顺热点** (HTTP) | 当日强势股+题材归因 reason tags | 稳定 73ms | 极低（零鉴权） |
 | 8 | **同花顺 hsgtApi** (HTTP) | 北向资金分钟级+自缓存历史 | 稳定 | 极低（零鉴权） |
-| 9 | **百度股市通** (HTTP) | 概念板块+个股资金流向+K线带MA | 稳定 | 极低（零鉴权） |
+| 9 | **百度股市通** (HTTP) | 概念板块+K线带MA | 稳定 | 极低（零鉴权） |
 | 10 | **新浪财经** (HTTP) | 资产负债表/利润表/现金流量表 | 稳定 | 低 |
 | 11 | **同花顺 basic** (HTTP) | 一致预期EPS | 稳定(需UA) | 低 |
 | 12 | **财联社** (HTTP) | 全市场实时电报 | 稳定 | 低 |
 | 13 | **巨潮 cninfo** (HTTP) | 公告全文检索+下载 | 稳定 | 低 |
 
-**原则：** 行情走 mootdx+腾讯（不封IP），研报走东财+iwencai，资金面走东财 datacenter，**信号层走同花顺+百度直连接口（零鉴权 + 分钟级资金流向）**。全部直连 HTTP，零第三方数据封装依赖。
+**原则：** 行情走 mootdx+腾讯（不封IP），研报走东财+iwencai，资金面走东财 datacenter+push2，**信号层走同花顺+百度+东财直连接口**。全部直连 HTTP，零第三方数据封装依赖。
 
 ---
 

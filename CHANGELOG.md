@@ -1,5 +1,24 @@
 # Changelog
 
+## v3.1 — 2026-05-19
+
+### 修复（失效接口替换）
+- **百度 PAE 资金流** `fundflow` + `fundsortlist` 已下线（返回 null）→ 替换为东财 push2 分钟级资金流 `eastmoney_fund_flow_minute()`
+- **大宗交易** `RPT_DATA_OCCURTRADE` 报表配置已下线 → 替换为 `RPT_DATA_BLOCKTRADE`（字段兼容）
+- **龙虎榜机构买卖** `RPT_ORGANIZATION_BUSSINESS` 报表配置已下线 → 改用 BUY/SELL 席位明细筛选 `OPERATEDEPT_CODE="0"`
+- **东财全球资讯** 新增必填参数 `req_trace`（UUID），否则返回 403
+- **巨潮公告** `stock` 参数格式变更：旧 `"{code},{plate}"` → 新 `"{code},{orgId}"`（如 `600519,gssh0600519`），`column` 改为空字符串
+
+### 优化
+- 信号层资金流数据源从百度切换到东财 push2，与 Layer 4 资金面统一为东财体系
+- 数据源优先级表更新：百度股市通降级为概念板块+K线，资金流功能归入东财 push2
+
+### 测试
+- 28 端点全量实测（2026-05-19），所有端点均通过贵州茅台 600519 验证
+- push2 系列 5 个端点在阿里云服务器直连验证通过（本地 Clash 代理可能干扰）
+
+---
+
 ## v3.0 — 2026-05-17
 
 ### Breaking Changes

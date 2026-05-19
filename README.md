@@ -2,9 +2,11 @@
 
 A 股全栈数据工具包 — 7 层架构 · 28 个端点 · 13 个数据源 · 零第三方数据封装依赖
 
-一个自包含的 Skill 文件，把分散在 13 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权、百度 PAE 的 Header 拼接——全部封装好了。
+一个自包含的 Skill 文件，把分散在 13 个数据源里的 A 股原始数据整合成 AI 编程助手直接能用的工具集。你不用再背 mootdx 的 K 线参数、东财的 PDF Referer 头、iwencai 的 X-Claw 鉴权——全部封装好了。
 
-> **V3.0 Breaking Change：** 彻底移除 akshare 依赖，所有数据源改为直连 HTTP API。新增资金面/筹码层（融资融券 + 大宗交易 + 股东户数 + 分红送转 + 个股资金流120日）。
+> **V3.1 修复（2026-05-19）：** 替换 4 个失效接口（百度 PAE 资金流→东财 push2、大宗交易/机构席位报表名更新）+ 修复东财全球资讯和巨潮公告参数变更。全部 28 端点实测通过。
+>
+> **V3.0 Breaking Change：** 彻底移除 akshare 依赖，所有数据源改为直连 HTTP API。新增资金面/筹码层。
 
 > 兼容 [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
 >
@@ -15,13 +17,13 @@ A 股全栈数据工具包 — 7 层架构 · 28 个端点 · 13 个数据源 ·
 ## 架构
 
 ```
-A 股全栈数据 · 七层架构 · V3.0
+A 股全栈数据 · 七层架构 · V3.1
 │
 ├── 行情层    mootdx + 腾讯财经 + 百度K线   K线(带MA5/10/20) + 五档盘口 + PE/PB/市值 + 指数/ETF
 ├── 研报层    东财 reportapi + 同花顺 + iwencai  研报列表 / PDF下载 / 一致预期 / NL搜索
-├── 信号层    同花顺 + 百度股市通 + 东财DC   强势股 + 题材归因 + 北向资金 + 概念板块
-│                                           + 资金流向 + 龙虎榜 + 全市场龙虎榜 + 解禁 + 行业对比
-├── 资金面    东财 datacenter + push2his     融资融券 + 大宗交易 + 股东户数 + 分红送转 + 资金流120日
+├── 信号层    同花顺 + 百度股市通 + 东财     强势股 + 题材归因 + 北向资金 + 概念板块
+│                                           + 资金流向(push2) + 龙虎榜 + 全市场龙虎榜 + 解禁 + 行业对比
+├── 资金面    东财 datacenter + push2        融资融券 + 大宗交易 + 股东户数 + 分红送转 + 资金流(分钟+120日)
 ├── 新闻层    东财 + 财联社（直连HTTP）      个股新闻 / 财联社快讯 / 全球资讯
 ├── 基础数据  mootdx + 东财 + 新浪           季报37字段 / F10九大类 / 财报三表
 └── 公告层    巨潮 cninfo + mootdx           沪深北全量公告
@@ -78,7 +80,7 @@ pip install mootdx requests pandas stockstats
 | 同花顺北向（实时） | 沪股通 / 深股通分钟级流向（262 个时间点） |
 | 同花顺北向（历史） | 本地自缓存日级历史 |
 | 百度概念板块 | 行业 / 概念 / 地域三维归属 + 当日涨跌幅 |
-| 百度资金流向 | 主力 / 散户 / 超大单分钟级 + 20 日历史 |
+| **东财资金流向** | 主力 / 大单 / 中单 / 小单 / 超大单分钟级净流入（V3.1 替换百度 PAE） |
 | 龙虎榜席位 | 上榜记录 + 买卖席位 TOP5 + 机构动向 |
 | 全市场龙虎榜 | 每日全市场上榜股票 + 净买额排名 + 上榜原因 |
 | 限售解禁日历 | 历史解禁 + 未来 90 天待解禁预警 |
@@ -152,17 +154,15 @@ pip install mootdx requests pandas stockstats
 
 ---
 
-## V3.0 亮点
+## V3.1 亮点
 
 | 变化 | 说明 |
 |------|------|
-| **移除 akshare** | 13 个 akshare 调用全部替换为直连 HTTP API，零中间依赖 |
-| **资金面/筹码层** | 新增融资融券、大宗交易、股东户数、分红送转、个股资金流120日 |
-| **百度K线带MA** | 返回时直接含 MA5/10/20 均价，无需自行计算 |
-| **行业板块切东财** | 同花顺加了反爬401，换东财 push2 零鉴权替代 |
-| **指数/ETF行情** | 腾讯 API 扩展支持上证指数、沪深300、创业板指、ETF |
-| **统一 helper** | `eastmoney_datacenter()` 函数复用 6 类 datacenter 查询 |
-| **28 端点** | 从 20 增至 28，数据源从 8 增至 13 |
+| **4 个失效接口替换** | 百度 PAE 资金流→东财 push2，大宗交易/机构席位报表名更新，全部实测通过 |
+| **东财全球资讯修复** | 新增必填参数 `req_trace`（UUID），否则返回 403 |
+| **巨潮公告修复** | `stock` 参数格式从 `code,plate` 更新为 `code,orgId`（如 `600519,gssh0600519`） |
+| **资金流统一东财** | 信号层资金流从百度切到东财 push2，与资金面层统一数据源 |
+| **28 端点全量实测** | 2026-05-19 全部 28 端点通过贵州茅台 600519 验证 |
 
 ---
 
@@ -178,13 +178,13 @@ pip install mootdx requests pandas stockstats
 | 6 | 东财 reportapi/PDF | HTTP | 低 |
 | 7 | 同花顺热点 | HTTP | 极低（零鉴权） |
 | 8 | 同花顺北向 | HTTP | 极低（零鉴权） |
-| 9 | 百度股市通 | HTTP | 极低（零鉴权） |
+| 9 | 百度股市通 | HTTP | 极低（概念板块+K线） |
 | 10 | 新浪财经 | HTTP | 低 |
 | 11 | 同花顺一致预期 | HTTP | 低（需UA） |
 | 12 | 财联社 | HTTP | 低 |
 | 13 | 巨潮 cninfo | HTTP | 低 |
 
-> **V3.0 架构原则：** 除 mootdx（TCP 二进制协议）外，全部直连 HTTP API，零第三方数据封装依赖。
+> **架构原则：** 除 mootdx（TCP 二进制协议）外，全部直连 HTTP API，零第三方数据封装依赖。V3.1 起资金流统一走东财 push2。
 
 ---
 
@@ -265,9 +265,11 @@ V2.1 改为本地自缓存。每次调用自动积累，越跑越丰富。首次
 
 Full-stack data toolkit for China A-Share market — 7-layer architecture · 28 endpoints · 13 data sources · zero third-party data wrapper dependencies
 
-A self-contained Skill file that consolidates raw A-share data from 13 sources into a ready-to-use toolkit for AI coding assistants. No need to memorize mootdx candlestick parameters, Eastmoney PDF Referer headers, iwencai X-Claw authentication, or Baidu PAE header assembly — it's all handled.
+A self-contained Skill file that consolidates raw A-share data from 13 sources into a ready-to-use toolkit for AI coding assistants. No need to memorize mootdx candlestick parameters, Eastmoney PDF Referer headers, or iwencai X-Claw authentication — it's all handled.
 
-> **V3.0 Breaking Change:** Completely removed akshare dependency. All data sources now use direct HTTP API calls. Added capital flow / ownership layer (margin trading + block trades + shareholder count + dividends + 120-day fund flow).
+> **V3.1 Fix (2026-05-19):** Replaced 4 broken endpoints (Baidu PAE fund flow → Eastmoney push2, block trade/institution report name updates) + fixed Eastmoney global news and cninfo filing parameter changes. All 28 endpoints verified.
+>
+> **V3.0 Breaking Change:** Completely removed akshare dependency. All data sources now use direct HTTP API calls. Added capital flow / ownership layer.
 
 > Compatible with [Claude Code](https://github.com/anthropics/claude-code) · [Codex](https://github.com/openai/codex) · [OpenClaw](https://github.com/anthropics/openclaw)
 >
@@ -278,13 +280,13 @@ A self-contained Skill file that consolidates raw A-share data from 13 sources i
 ## Architecture
 
 ```
-China A-Share Full-Stack Data · 7-Layer Architecture · V3.0
+China A-Share Full-Stack Data · 7-Layer Architecture · V3.1
 │
 ├── Market Data    mootdx + Tencent + Baidu K-line   Candlesticks (w/ MA5/10/20) + Order Book + PE/PB + Index/ETF
 ├── Research       Eastmoney + THS + iwencai          Report list / PDF / Consensus EPS / NL search
-├── Signals        THS + Baidu + Eastmoney DC         Hot stocks + Sector attribution + Northbound flow
-│                                                     + Concept blocks + Fund flow + Dragon Tiger + Lockup + Industry
-├── Capital Flow   Eastmoney datacenter + push2his    Margin trading + Block trades + Holder count + Dividends + 120d flow
+├── Signals        THS + Baidu + Eastmoney            Hot stocks + Sector attribution + Northbound flow
+│                                                     + Concept blocks + Fund flow(push2) + Dragon Tiger + Lockup + Industry
+├── Capital Flow   Eastmoney datacenter + push2       Margin trading + Block trades + Holder count + Dividends + Fund flow(min+120d)
 ├── News           Eastmoney + CLS (direct HTTP)      Stock news / CLS flash / Global finance
 ├── Fundamentals   mootdx + Eastmoney + Sina          37-field quarterly + F10 9 categories + Financial statements
 └── Filings        cninfo + mootdx                    Full filings across SSE / SZSE / BSE
@@ -341,7 +343,7 @@ Launch Claude Code and say "Check the valuation of 688017" — the skill activat
 | THS Northbound (real-time) | Shanghai/Shenzhen Connect minute-level flow (262 data points) |
 | THS Northbound (historical) | Local self-cached daily history |
 | Baidu Concept Blocks | Industry / Concept / Region classification + daily change |
-| Baidu Fund Flow | Institutional / Retail / Super-large order minute-level + 20-day history |
+| **Eastmoney Fund Flow** | Main / Large / Medium / Small / Super-large order minute-level net inflow (V3.1, replaced Baidu PAE) |
 | Dragon Tiger Board | Appearance records + Top 5 buy/sell brokerages + institutional activity |
 | Daily Dragon Tiger (Full Market) | All stocks on daily board + net buy ranking + appearance reasons |
 | Lockup Expiry Calendar | Historical releases + 90-day upcoming expiry alerts |
@@ -411,17 +413,15 @@ Just tell your AI assistant:
 
 ---
 
-## V3.0 Highlights
+## V3.1 Highlights
 
 | Change | Description |
 |--------|-------------|
-| **Removed akshare** | All 13 akshare calls replaced with direct HTTP API calls, zero middleware |
-| **Capital Flow Layer** | New: margin trading, block trades, shareholder count, dividends, 120-day fund flow |
-| **Baidu K-line w/ MA** | Returns MA5/10/20 moving averages directly, no manual calculation |
-| **Industry → Eastmoney** | THS added anti-scraping 401, replaced with Eastmoney push2 (zero auth) |
-| **Index/ETF Quotes** | Tencent API extended for SSE Composite, CSI 300, ChiNext, ETFs |
-| **Unified Helper** | `eastmoney_datacenter()` function shared across 6 datacenter queries |
-| **28 Endpoints** | Up from 20, data sources up from 8 to 13 |
+| **4 Broken Endpoints Replaced** | Baidu PAE fund flow → Eastmoney push2, block trade/institution report names updated |
+| **Eastmoney Global News Fixed** | Added required `req_trace` UUID parameter (returns 403 without it) |
+| **cninfo Filings Fixed** | `stock` param format updated from `code,plate` to `code,orgId` |
+| **Unified Fund Flow Source** | Signal layer fund flow moved from Baidu to Eastmoney push2, unified with Capital Flow layer |
+| **All 28 Endpoints Verified** | Full test pass on 2026-05-19 against Kweichow Moutai (600519) |
 
 ---
 
@@ -437,13 +437,13 @@ Just tell your AI assistant:
 | 6 | Eastmoney reportapi/PDF | HTTP | Low |
 | 7 | THS Hot Stocks | HTTP | Very low (zero auth) |
 | 8 | THS Northbound | HTTP | Very low (zero auth) |
-| 9 | Baidu Finance | HTTP | Very low (zero auth) |
+| 9 | Baidu Finance | HTTP | Very low (concept blocks + K-line) |
 | 10 | Sina Finance | HTTP | Low |
 | 11 | THS Consensus EPS | HTTP | Low (UA required) |
 | 12 | CLS (Cailian Press) | HTTP | Low |
 | 13 | cninfo | HTTP | Low |
 
-> **V3.0 Architecture:** Except mootdx (TCP binary protocol), all sources use direct HTTP API calls. Zero third-party data wrapper dependencies.
+> **Architecture:** Except mootdx (TCP binary protocol), all sources use direct HTTP API calls. Zero third-party data wrapper dependencies. Fund flow unified on Eastmoney push2 since V3.1.
 
 ---
 
